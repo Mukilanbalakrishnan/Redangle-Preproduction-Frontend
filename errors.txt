@@ -1,0 +1,15 @@
+
+> red-angle-preproduction@0.0.0 build
+> tsc -b && vite build
+
+src/pages/data-management/pages/Dashboard.tsx(1,92): error TS6133: 'LinkIcon' is declared but its value is never read.
+src/pages/data-management/pages/LeaveRequest.tsx(1,60): error TS6133: 'UserCircle2' is declared but its value is never read.
+src/pages/data-management/pages/LeaveRequest.tsx(1,73): error TS6133: 'ArrowRight' is declared but its value is never read.
+src/pages/data-management/pages/ServerStorage.tsx(109,26): error TS2304: Cannot find name 'Database'.
+src/pages/employee-2/components/Employee2Sidebar.tsx(6,5): error TS6133: 'Briefcase' is declared but its value is never read.
+src/pages/employee-3/pages/AssignedProjects.tsx(2,10): error TS6133: 'Calendar' is declared but its value is never read.
+src/pages/employee-3/pages/DesignPreview.tsx(2,10): error TS6133: 'Calendar' is declared but its value is never read.
+src/pages/employee-3/pages/MyWork.tsx(2,20): error TS6133: 'Clock' is declared but its value is never read.
+src/pages/employee-4/pages/AssignedProjects.tsx(2,22): error TS6133: 'Calendar' is declared but its value is never read.
+src/pages/employee-4/pages/DesignPreview.tsx(2,46): error TS6133: 'SendHorizontal' is declared but its value is never read.
+src/pages/employee-4/pages/MyWork.tsx(2,29): error TS6133: 'CheckCircle2' is declared but its value is never read.
