@@ -1,0 +1,112 @@
+I need you to update the Videographer module (src/pages/videographer/) so that it has all the same features as the Photographer module (src/pages/photographer/). The Photographer module is the "source of truth" — the Videographer should mirror every feature, just adapted for video context (e.g., "videos" instead of "images", 
+Video
+ icon instead of Camera icon, VIDEOGRAPHER_ID = 6 instead of PHOTOGRAPHER_ID = 5).
+
+Project Context
+Frontend: e:\red angle\Red-Angle-PreProduction (React + Vite)
+Backend: e:\red angle\Red-Angle-PreProduction-Backend (Express + TypeScript + PostgreSQL)
+Backend API base: import.meta.env.VITE_API_URL (runs on http://localhost:5001)
+Photographer employee_id: 5
+Videographer employee_id: 6
+The backend already has all the necessary API endpoints for both employees (they share the same /api/employee/:employeeId/* endpoints). No backend changes needed.
+File-by-File Comparison & Required Changes
+1. MyWork.tsx — Missing "View" button & doesn't pass task state
+Photographer version (6.3KB, 105 lines) has:
+
+A "View" button (Eye icon) that navigates to /photographer/my-work-details with full task state (leadCode, leadId, leadEmployeeId, title, client, deadline, priority, description, estimatedDuration)
+An "Upload" button that navigates to /photographer/upload-files with task state (leadCode, leadId, title, client, deadline, priority)
+Both buttons side-by-side in a flex gap-3 container
+Videographer version (4.5KB, 80 lines) is missing:
+
+❌ No "View" button at all
+❌ Upload button navigates to /videographer/upload-files WITHOUT passing any task state (no leadId, no client, nothing)
+Fix: Copy the Photographer's MyWork.tsx action column pattern. Add the "View" button navigating to /videographer/my-work-details. Fix the Upload button to pass task state. Use Video icon instead of Camera.
+
+2. MyWorkDetails.tsx — ENTIRELY MISSING from Videographer
+Photographer version (16KB, 253 lines) has:
+
+Full task details view (Lead Code, Title, Client, Deadline, Priority, Description, Estimated Duration)
+Fetches uploaded file data from GET /api/employee/{id}/uploads/{leadEmployeeId}
+Displays uploaded files info (drive link, camera used, num images, num videos, upload notes)
+Priority badge styling
+Back button to /photographer/my-work
+Videographer version: ❌ File does not exist at all.
+
+Fix: Create src/pages/videographer/pages/MyWorkDetails.tsx by copying the Photographer version. Change:
+
+All route references from /photographer/ to /videographer/
+PHOTOGRAPHER_ID → use 6 or VIDEOGRAPHER_ID
+Camera icon → Video icon where contextually appropriate
+Register the route /videographer/my-work-details in the router (check App.tsx for how photographer routes are registered and add the matching videographer route)
+3. UploadFiles.tsx — Static/hardcoded vs fully functional
+Photographer version (16KB, 261 lines) has:
+
+Receives task info via React Router useLocation().state (leadCode, leadId, title, client, deadline, priority)
+Displays task info header with the actual project details
+Form with fields: Google Drive Link, Camera Used, Number of Images, Number of Videos, Short Notes
+handleSubmit function that POSTs to POST /api/employee/{id}/uploads with leadEmployeeId and form data
+Toast notifications on success/failure (uses sonner)
+Success state UI after upload
+Videographer version (3.9KB, 39 lines) has:
+
+❌ Completely static/hardcoded — no API calls at all
+❌ Hardcoded "Task ID: T001" instead of reading from router state
+❌ No form submission logic
+❌ No toast notifications
+Fix: Replace the Videographer UploadFiles.tsx with a copy of the Photographer version, adapted:
+
+Route references: /photographer/ → /videographer/
+Context labels: "raw images" → "raw videos"
+Icons: Camera → Video where appropriate
+Employee ID: use 6
+4. Attendance.tsx — Missing toast notifications and some UI polish
+Photographer version (12KB, 226 lines) has:
+
+toast notifications from sonner for punch in/out success/failure
+TodayStatus interface with proper typing
+Clock icon import for time display
+Separate fetchAttendance and fetchTodayStatus functions
+More polished error handling
+Videographer version (7KB, 126 lines) has:
+
+✅ Core functionality works (punch in/out, attendance history)
+❌ No toast notifications for punch in/out
+❌ Less structured data fetching
+Fix: Add toast notifications from sonner to the Videographer's handlePunchIn and handlePunchOut functions. Add toast.success('Punched in successfully!') on success and toast.error('Failed to punch in') on failure. Import { toast } from 'sonner' and { Clock } from 'lucide-react'.
+
+5. ClientDetailsView.tsx — Missing API integration and action handlers
+Photographer version (23KB, 357 lines) has:
+
+Fetches event details from API: getEventDetailsByLeadId(client.lead_id || client.id)
+handleRaiseQuery function that creates a notification via createNotification API
+handleAcceptAssignment function that creates a notification
+Displays real event details (date, time, location, special requests, etc.) from the API
+Toast notifications for actions
+lead_id field in the client interface
+Videographer version (10KB, 155 lines) has:
+
+❌ No API calls — all details are hardcoded/static
+❌ No action handlers (no Raise Query, no Accept Assignment)
+❌ No notification integration
+❌ Missing lead_id in client interface
+Fix: Update the Videographer ClientDetailsView.tsx to:
+
+Import and use getEventDetailsByLeadId from ../../../api/eventDetails.api
+Import and use createNotification from ../../../api/notification.api
+Import toast from sonner
+Add lead_id?: string to the client interface
+Add handleRaiseQuery and handleAcceptAssignment handlers matching the Photographer version
+Fetch real event details on mount with useEffect
+Replace hardcoded details with real API data
+Routing
+Make sure to register the new /videographer/my-work-details route in the app router (check how /photographer/my-work-details is registered in App.tsx and add the equivalent for videographer, importing MyWorkDetails from the videographer pages).
+
+Summary of all changes
+File	Action
+videographer/pages/MyWork.tsx	Add "View" button, fix Upload to pass state
+videographer/pages/MyWorkDetails.tsx	CREATE - copy from photographer, adapt
+videographer/pages/UploadFiles.tsx	REWRITE - copy from photographer, adapt
+videographer/pages/Attendance.tsx	Add toast notifications
+videographer/pages/ClientDetailsView.tsx	Add API integration, action handlers
+App.tsx (or router file)	Add /videographer/my-work-details route
+After making changes, the videographer module should be functionally identical to the photographer module, just contextually adapted for video work.
