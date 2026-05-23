@@ -54,7 +54,10 @@ export default function DroneWorks() {
             .then(r => r.json())
             .then(result => {
                 if (result.success) {
-                    setWorks(sortNewestFirst((result.data || []).filter((item: WorkItem) => String(item.task_name || item.name || '').toLowerCase().includes('drone'))))
+                    setWorks(sortNewestFirst((result.data || []).filter((item: WorkItem) => {
+                        const tName = String(item.task_name || item.name || '').toLowerCase();
+                        return tName.includes('drone') || tName.includes('additional staff') || tName.includes('additional-staff');
+                    })))
                 }
             })
             .catch(console.error)

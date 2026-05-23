@@ -11,6 +11,146 @@ import { isPreProductionPhase, resolveClientFlowView } from '../../../ClientFlow
 
 type View = 'dashboard' | 'callDetails' | 'assignTeam';
 
+const parseDashboardDate = (value: any) => {
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const getLeadDate = (lead: any) => parseDashboardDate(lead.createdAt) || parseDashboardDate(lead.created_at) || parseDashboardDate(lead.eventDate);
+
+const isCompletedLead = (lead: any) => {
+    const status = String(lead.status).toLowerCase();
+    const phaseStatus = String(lead.phaseStatus).toLowerCase();
+    const currentPhase = String(lead.currentPhase).toLowerCase();
+    return status === "completed" ||
+        phaseStatus === "completed" ||
+        currentPhase === "event" ||
+        currentPhase === "post_production";
+};
+
+const startOfDay = (date: Date) => {
+    const copy = new Date(date);
+    copy.setHours(0, 0, 0, 0);
+    return copy;
+};
+
+const monthKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+const dayKey = (date: Date) => date.toISOString().slice(0, 10);
+
+const buildPerformanceSeries = (leads: any[], dateRange: string, customDates: { start: string; end: string }) => {
+    const datedLeads = leads
+        .map(lead => ({ lead, date: getLeadDate(lead) }))
+        .filter((item): item is { lead: any; date: Date } => Boolean(item.date));
+
+    if (datedLeads.length === 0) return [];
+
+    const now = new Date();
+    let buckets: Array<{ key: string; month: string; start: Date }> = [];
+
+    if (dateRange === 'Yesterday') {
+        const yesterday = startOfDay(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        buckets = Array.from({ length: 4 }, (_, index) => {
+            const start = new Date(yesterday);
+            start.setHours(index * 6, 0, 0, 0);
+            return {
+                key: `${dayKey(yesterday)}-${index}`,
+                month: start.toLocaleTimeString('default', { hour: '2-digit' }),
+                start,
+            };
+        });
+    } else if (dateRange === 'Last week') {
+        const firstDay = startOfDay(now);
+        firstDay.setDate(firstDay.getDate() - 6);
+        buckets = Array.from({ length: 7 }, (_, index) => {
+            const start = new Date(firstDay);
+            start.setDate(firstDay.getDate() + index);
+            return {
+                key: dayKey(start),
+                month: start.toLocaleDateString('default', { weekday: 'short', day: 'numeric' }),
+                start,
+            };
+        });
+    } else if (dateRange === 'Last month') {
+        const firstDay = startOfDay(now);
+        firstDay.setDate(firstDay.getDate() - 27);
+        buckets = Array.from({ length: 4 }, (_, index) => {
+            const start = new Date(firstDay);
+            start.setDate(firstDay.getDate() + (index * 7));
+            return {
+                key: `week-${index}`,
+                month: `Week ${index + 1}`,
+                start,
+            };
+        });
+    } else {
+        const end = dateRange === 'Custom' && customDates.end ? parseDashboardDate(customDates.end) || now : now;
+        const start = dateRange === 'Custom' && customDates.start
+            ? parseDashboardDate(customDates.start) || datedLeads[datedLeads.length - 1].date
+            : dateRange === 'Last year'
+                ? new Date(end.getFullYear(), end.getMonth() - 11, 1)
+                : new Date(Math.min(...datedLeads.map(item => item.date.getTime())));
+
+        const startCursor = new Date(start.getFullYear(), start.getMonth(), 1);
+        const finalMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+        let cursor = new Date(startCursor);
+        while (cursor <= finalMonth) {
+            buckets.push({
+                key: monthKey(cursor),
+                month: cursor.toLocaleDateString('default', { month: 'short', year: '2-digit' }),
+                start: new Date(cursor),
+            });
+            cursor.setMonth(cursor.getMonth() + 1);
+        }
+        // If only 1 month bucket, fall back to day-level view for that month
+        if (buckets.length === 1) {
+            buckets = [];
+            const monthStart = new Date(startCursor);
+            const monthEnd = new Date(end.getFullYear(), end.getMonth() + 1, 0); // last day of month
+            const totalDays = Math.min(monthEnd.getDate(), 30);
+            for (let d = 0; d < totalDays; d++) {
+                const day = new Date(monthStart);
+                day.setDate(monthStart.getDate() + d);
+                if (day > end) break;
+                buckets.push({
+                    key: dayKey(day),
+                    month: day.toLocaleDateString('default', { day: 'numeric', month: 'short' }),
+                    start: new Date(day),
+                });
+            }
+        }
+    }
+
+    const bucketed = buckets.map(bucket => ({ ...bucket, newLeads: 0, completedLeads: 0 }));
+
+    // Detect if buckets are day-level (key format: YYYY-MM-DD) or month-level
+    const isDayLevel = bucketed.length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(bucketed[0]?.key || '');
+
+    datedLeads.forEach(({ lead, date }) => {
+        let bucketKey = '';
+        if (dateRange === 'Yesterday') {
+            bucketKey = `${dayKey(startOfDay(date))}-${Math.min(3, Math.floor(date.getHours() / 6))}`;
+        } else if (dateRange === 'Last week' || isDayLevel) {
+            bucketKey = dayKey(startOfDay(date));
+        } else if (dateRange === 'Last month') {
+            const firstBucket = bucketed[0]?.start;
+            if (!firstBucket) return;
+            const dayOffset = Math.floor((startOfDay(date).getTime() - firstBucket.getTime()) / 86400000);
+            bucketKey = `week-${Math.min(3, Math.max(0, Math.floor(dayOffset / 7)))}`;
+        } else {
+            bucketKey = monthKey(date);
+        }
+
+        const bucket = bucketed.find(item => item.key === bucketKey);
+        if (!bucket) return;
+        if (isCompletedLead(lead)) bucket.completedLeads += 1;
+        else bucket.newLeads += 1;
+    });
+
+    return bucketed.map(({ month, newLeads, completedLeads }) => ({ month, newLeads, completedLeads }));
+};
+
 export default function Dashboard() {
     const API_URL = import.meta.env.VITE_API_URL;
 
@@ -48,7 +188,7 @@ export default function Dashboard() {
                 );
 
                 const leads = res.data.data;
-
+                console.log("Dashboard fetched leads:", leads.length, leads);
                 setAllLeadsCache(leads); // Cache for filtering
             } catch (err) {
                 console.error("Dashboard fetch failed", err);
@@ -60,78 +200,28 @@ export default function Dashboard() {
         fetchLeads();
     }, []); // Run once on mount
 
+    // ── Stats & Table: always use ALL leads regardless of chart date range ──
     useEffect(() => {
         if (!allLeadsCache.length) return;
 
-        let filteredLeads = allLeadsCache;
-        const now = new Date();
+        const isCompleted = (l: any) =>
+            String(l.status).toLowerCase() === "completed" ||
+            String(l.phaseStatus).toLowerCase() === "completed" ||
+            String(l.currentPhase).toLowerCase() === "event" ||
+            String(l.currentPhase).toLowerCase() === "post_production";
 
-        // 1. DATE FILTER
-        if (dateRange === 'Yesterday') {
-            const yesterday = new Date(now);
-            yesterday.setDate(now.getDate() - 1);
-            filteredLeads = allLeadsCache.filter((lead: any) => {
-                if (!lead.createdAt) return false;
-                const d = new Date(lead.createdAt);
-                return d.toDateString() === yesterday.toDateString();
-            });
-        } else if (dateRange === 'Last week') {
-            const lastWeek = new Date(now);
-            lastWeek.setDate(now.getDate() - 7);
-            filteredLeads = allLeadsCache.filter((lead: any) => {
-                if (!lead.createdAt) return false;
-                return new Date(lead.createdAt) >= lastWeek;
-            });
-        } else if (dateRange === 'Last month') {
-            const lastMonth = new Date(now);
-            lastMonth.setMonth(now.getMonth() - 1);
-            filteredLeads = allLeadsCache.filter((lead: any) => {
-                if (!lead.createdAt) return false;
-                return new Date(lead.createdAt) >= lastMonth;
-            });
-        } else if (dateRange === 'Last year') {
-            const lastYear = new Date(now);
-            lastYear.setFullYear(now.getFullYear() - 1);
-            filteredLeads = allLeadsCache.filter((lead: any) => {
-                if (!lead.createdAt) return false;
-                return new Date(lead.createdAt) >= lastYear;
-            });
-        } else if (dateRange === 'Custom') {
-            if (customDates.start && customDates.end) {
-                const start = new Date(customDates.start);
-                const end = new Date(customDates.end);
-                end.setHours(23, 59, 59, 999);
-                filteredLeads = allLeadsCache.filter((lead: any) => {
-                    if (!lead.createdAt) return false;
-                    const d = new Date(lead.createdAt);
-                    return d >= start && d <= end;
-                });
-            }
-        }
-
-        // 2. UPDATE STATS based on date-filtered leads
-        const totalCount = filteredLeads.length;
-        const completedCount = filteredLeads.filter((l: any) => 
-            String(l.status).toLowerCase() === "completed" || 
-            String(l.currentPhase).toLowerCase() === "event" || 
-            String(l.currentPhase).toLowerCase() === "post_production"
+        const totalCount     = allLeadsCache.length;
+        const completedCount = allLeadsCache.filter(isCompleted).length;
+        const pendingCount   = allLeadsCache.filter((l: any) =>
+            !isCompleted(l) && String(l.status).toLowerCase() !== "contacted"
+        ).length;
+        const followUpsCount = allLeadsCache.filter((l: any) =>
+            !isCompleted(l) && String(l.status).toLowerCase() === "contacted"
         ).length;
 
-        setStats({
-            total: totalCount,
-            completed: completedCount,
-            pending: totalCount - completedCount,
-            followUps: filteredLeads.filter((l: any) => {
-                const isCompleted = 
-                    String(l.status).toLowerCase() === "completed" || 
-                    String(l.currentPhase).toLowerCase() === "event" || 
-                    String(l.currentPhase).toLowerCase() === "post_production";
-                return !isCompleted && String(l.status).toLowerCase() === "contacted";
-            }).length,
-        });
+        setStats({ total: totalCount, completed: completedCount, pending: pendingCount, followUps: followUpsCount });
 
-        // 3. FORMAT FOR TABLE
-        const formatted = filteredLeads.map((lead: any) => ({
+        const formatted = allLeadsCache.map((lead: any) => ({
             id: lead.serialNumber || lead.lead_serial_number || String(lead.id),
             rawId: lead.id,
             name: lead.leadName ?? "-",
@@ -140,43 +230,68 @@ export default function Dashboard() {
             location: lead.location ?? "—",
             eventDate: lead.eventDate ?? "-",
             shootType: lead.eventType ?? "-",
-            status: (
-                String(lead.status).toLowerCase() === "completed" || 
-                String(lead.currentPhase).toLowerCase() === "event" || 
-                String(lead.currentPhase).toLowerCase() === "post_production"
-            ) ? "Completed" : 
-            String(lead.status).toLowerCase() === "contacted" ? "Contacted" :
-            "New",
+            status: isCompleted(lead) ? "Completed"
+                : String(lead.status).toLowerCase() === "contacted" ? "Contacted"
+                : "New",
         }));
         setRecentLeads(formatted);
+    }, [allLeadsCache]);
 
-        // 4. GROUPING FOR CHART
-        const groupedData: Record<string, any> = {};
-        filteredLeads.forEach((lead: any) => {
-            if (!lead.createdAt) return;
-            const date = new Date(lead.createdAt);
+    // ── Chart: date-range filtered subset ──
+    useEffect(() => {
+        if (!allLeadsCache.length) return;
 
-            let labelKey = "";
-            if (dateRange === 'Last year' || dateRange === 'Custom') {
-                labelKey = date.toLocaleString("default", { month: "short", year: "numeric" });
-            } else if (dateRange === 'Yesterday') {
-                labelKey = date.toLocaleString("default", { hour: '2-digit', minute: '2-digit' });
-            } else {
-                labelKey = date.toLocaleString("default", { weekday: "short", day: "numeric", month: "short" });
+        let chartLeads = allLeadsCache;
+        const now = new Date();
+
+        if (dateRange === 'Yesterday') {
+            const yesterday = new Date(now);
+            yesterday.setDate(now.getDate() - 1);
+            chartLeads = allLeadsCache.filter((lead: any) => {
+                const d = lead.createdAt || lead.created_at;
+                if (!d) return false;
+                return new Date(d).toDateString() === yesterday.toDateString();
+            });
+        } else if (dateRange === 'Last week') {
+            const cutoff = new Date(now);
+            cutoff.setDate(now.getDate() - 7);
+            chartLeads = allLeadsCache.filter((lead: any) => {
+                const d = lead.createdAt || lead.created_at;
+                if (!d) return false;
+                return new Date(d) >= cutoff;
+            });
+        } else if (dateRange === 'Last month') {
+            const cutoff = new Date(now);
+            cutoff.setMonth(now.getMonth() - 1);
+            chartLeads = allLeadsCache.filter((lead: any) => {
+                const d = lead.createdAt || lead.created_at;
+                if (!d) return false;
+                return new Date(d) >= cutoff;
+            });
+        } else if (dateRange === 'Last year') {
+            const cutoff = new Date(now);
+            cutoff.setFullYear(now.getFullYear() - 1);
+            chartLeads = allLeadsCache.filter((lead: any) => {
+                const d = lead.createdAt || lead.created_at;
+                if (!d) return false;
+                return new Date(d) >= cutoff;
+            });
+        } else if (dateRange === 'Custom') {
+            if (customDates.start && customDates.end) {
+                const start = new Date(customDates.start);
+                const end = new Date(customDates.end);
+                end.setHours(23, 59, 59, 999);
+                chartLeads = allLeadsCache.filter((lead: any) => {
+                    const d = lead.createdAt || lead.created_at;
+                    if (!d) return false;
+                    const date = new Date(d);
+                    return date >= start && date <= end;
+                });
             }
+        }
+        // 'All time' → chartLeads stays as allLeadsCache
 
-            if (!groupedData[labelKey]) {
-                groupedData[labelKey] = { month: labelKey, newLeads: 0, completedLeads: 0, _rawDate: date };
-            }
-
-            if (String(lead.status).toLowerCase() === "pending") groupedData[labelKey].newLeads++;
-            if (String(lead.status).toLowerCase() === "completed" || String(lead.currentPhase).toLowerCase() === "event") {
-                groupedData[labelKey].completedLeads++;
-            }
-        });
-
-        const chartData = Object.values(groupedData);
-        chartData.sort((a: any, b: any) => a._rawDate.getTime() - b._rawDate.getTime());
+        const chartData = buildPerformanceSeries(chartLeads, dateRange, customDates);
         setPerformanceData(chartData);
     }, [allLeadsCache, dateRange, customDates]);
 
@@ -326,13 +441,18 @@ export default function Dashboard() {
                     <div className="flex items-center gap-2 relative">
                         <select
                             value={dateRange}
-                            onChange={(e) => setDateRange(e.target.value)}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                setDateRange(val);
+                                if (val !== 'Custom') setShowDatePicker(false);
+                            }}
                             className="text-xs rounded-lg px-3 py-1.5 outline-none crm-card cursor-pointer bg-white border border-gray-100 font-medium" style={{ color: '#6B7280' }}>
-                            <option value="Yesterday">Yesterday</option>
                             <option value="Last week">Last week</option>
+                            <option value="Yesterday">Yesterday</option>
                             <option value="Last month">Last month</option>
                             <option value="Last year">Last year</option>
-                            {dateRange === 'Custom' && <option value="Custom" className="hidden">Custom Date</option>}
+                            <option value="All time">All time</option>
+                            {dateRange === 'Custom' && <option value="Custom">Custom Date</option>}
                         </select>
                         <div
                             className="relative crm-card bg-white border border-gray-100 p-1.5 rounded-lg text-gray-400 hover:text-purple-600 transition-colors shadow-sm flex items-center justify-center cursor-pointer"
@@ -378,37 +498,68 @@ export default function Dashboard() {
                         )}
                     </div>
                 </div>
-                {performanceData.length === 0 ? (
+                {performanceData.length === 0 || performanceData.every(d => d.newLeads === 0 && d.completedLeads === 0) ? (
                     <div className="flex flex-col items-center justify-center" style={{ height: '210px', color: '#9CA3AF' }}>
                         <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} className="mb-3">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M3 13l4-4 4 4 4-6 4 4" />
                         </svg>
-                        <p className="text-sm">No performance data yet</p>
+                        <p className="text-sm font-medium">No performance data for this period</p>
+                        <p className="text-xs mt-1">Try selecting a wider date range</p>
                     </div>
                 ) : (
-                    <ResponsiveContainer width="100%" height={210}>
-                        <LineChart data={performanceData}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                            <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                            <Tooltip contentStyle={{ borderRadius: '10px', border: '1px solid #E5E7EB', fontSize: '11px' }} />
-                            <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: '11px' }} />
+                    <ResponsiveContainer width="100%" height={220}>
+                        <LineChart data={performanceData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+                            <XAxis
+                                dataKey="month"
+                                tick={{ fontSize: 10, fill: '#9CA3AF' }}
+                                axisLine={false}
+                                tickLine={false}
+                                interval="preserveStartEnd"
+                            />
+                            <YAxis
+                                tick={{ fontSize: 10, fill: '#9CA3AF' }}
+                                axisLine={false}
+                                tickLine={false}
+                                allowDecimals={false}
+                                domain={[0, (dataMax: number) => Math.max(dataMax + 1, 4)]}
+                                width={28}
+                            />
+                            <Tooltip
+                                contentStyle={{
+                                    borderRadius: '12px',
+                                    border: '1px solid #E5E7EB',
+                                    fontSize: '12px',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                                    padding: '8px 12px',
+                                }}
+                                labelStyle={{ fontWeight: 700, color: '#374151', marginBottom: 4 }}
+                                cursor={{ stroke: '#E5E7EB', strokeWidth: 1 }}
+                            />
+                            <Legend
+                                iconType="circle"
+                                iconSize={8}
+                                wrapperStyle={{ fontSize: '11px', paddingTop: '12px' }}
+                            />
                             <Line
                                 type="monotone"
                                 dataKey="newLeads"
                                 name="New Leads"
                                 stroke="#FF7B7B"
-                                strokeWidth={2}
-                                dot={false}
+                                strokeWidth={2.5}
+                                dot={{ r: 4, fill: '#FF7B7B', strokeWidth: 2, stroke: '#fff' }}
+                                activeDot={{ r: 6, fill: '#FF7B7B', stroke: '#fff', strokeWidth: 2 }}
+                                connectNulls={false}
                             />
-
                             <Line
                                 type="monotone"
                                 dataKey="completedLeads"
                                 name="Completed"
                                 stroke="#5B5FC7"
-                                strokeWidth={2}
-                                dot={false}
+                                strokeWidth={2.5}
+                                dot={{ r: 4, fill: '#5B5FC7', strokeWidth: 2, stroke: '#fff' }}
+                                activeDot={{ r: 6, fill: '#5B5FC7', stroke: '#fff', strokeWidth: 2 }}
+                                connectNulls={false}
                             />
                         </LineChart>
                     </ResponsiveContainer>

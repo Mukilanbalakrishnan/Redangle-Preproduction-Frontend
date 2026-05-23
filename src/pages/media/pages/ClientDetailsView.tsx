@@ -111,10 +111,11 @@ export default function ClientDetailsView({ onBack, client }: ClientDetailsViewP
                 setEventDetails(res.data)
 
                 try {
-                    const [cpRes, ccRes, assignTeamRes] = await Promise.all([
+                    const [cpRes, ccRes, assignTeamRes, statusRes] = await Promise.all([
                         getCreativePlanning(String(lookupId)),
                         getCreativeConfirmation(String(lookupId)),
-                        getAssignTeam(String(lookupId))
+                        getAssignTeam(String(lookupId)),
+                        axios.get(`${import.meta.env.VITE_API_URL}/assign-team/${lookupId}/status`)
                     ])
                     setCreativePlanning(cpRes?.data?.data || cpRes?.data)
                     setCreativeConfirmation(ccRes?.data?.data || ccRes?.data)
@@ -122,6 +123,17 @@ export default function ClientDetailsView({ onBack, client }: ClientDetailsViewP
                         setShootLocations(assignTeamRes.data.data.shoot_locations || [])
                     } else if (assignTeamRes?.data) {
                         setShootLocations(assignTeamRes.data.shoot_locations || [])
+                    }
+                    if (statusRes.data?.success && statusRes.data.data && Array.isArray(statusRes.data.data.accepted_assignments)) {
+                        const taskKey = assignmentTaskName
+                            .toLowerCase()
+                            .replace(/[_-]+/g, ' ')
+                            .replace(/\s+/g, ' ')
+                            .trim()
+                            .replace(/[^a-z0-9]+/g, '-')
+                            .replace(/^-|-$/g, '');
+                        const assignmentKey = `${numericEmployeeId}:${taskKey}`;
+                        setIsAccepted(statusRes.data.data.accepted_assignments.includes(assignmentKey));
                     }
                 } catch (cpErr) {
                     console.error("Failed to fetch creative or assignment details", cpErr)

@@ -153,9 +153,11 @@ export default function EmployeeTaskPage({ title, icon, filterType }: EmployeeTa
                 if (result.success) {
                     let data: Lead[] = result.data || []
                     if (filterType) {
-                        data = data.filter((p: Lead) =>
-                            (p.task_name || '').toLowerCase().includes(filterType.toLowerCase())
-                        )
+                        data = data.filter((p: Lead) => {
+                            const task = (p.task_name || '').toLowerCase();
+                            const type = filterType.toLowerCase();
+                            return task.includes(type) || task.includes('additional staff') || task.includes('additional-staff');
+                        })
                     }
                     setLeads(data)
                 }
@@ -171,7 +173,7 @@ export default function EmployeeTaskPage({ title, icon, filterType }: EmployeeTa
     )
 
     /* ── Fetch Client Details ── */
-    const fetchClientDetails = async (leadId: number | string) => {
+    const fetchClientDetails = async (leadId: number | string, taskName?: string) => {
         setDetailLoading(true)
         try {
             const eventRes = await axios.get(`${API_URL}/event-details/${leadId}`)
@@ -235,6 +237,29 @@ export default function EmployeeTaskPage({ title, icon, filterType }: EmployeeTa
             }
         } catch (err) { console.error('Creative details fetch failed', err) }
 
+        try {
+            const statusRes = await axios.get(`${API_URL}/assign-team/${leadId}/status`)
+            if (statusRes.data?.success && statusRes.data.data && Array.isArray(statusRes.data.data.accepted_assignments)) {
+                const userRaw = localStorage.getItem('ra_user')
+                const user = userRaw ? JSON.parse(userRaw) : null
+                if (user) {
+                    const numericId = parseInt(String(user.employee_id).replace(/\D/g, ''), 10)
+                    const currentTaskName = taskName || selectedLead?.task_name || ''
+                    const taskKey = currentTaskName
+                        .toLowerCase()
+                        .replace(/[_-]+/g, ' ')
+                        .replace(/\s+/g, ' ')
+                        .trim()
+                        .replace(/[^a-z0-9]+/g, '-')
+                        .replace(/^-|-$/g, '')
+                    const assignmentKey = `${numericId}:${taskKey}`
+                    const isNowAccepted = statusRes.data.data.accepted_assignments.includes(assignmentKey)
+                    setSelectedLead(prev => prev ? { ...prev, accepted: isNowAccepted } : null)
+                    setLeads(prev => prev.map(l => l.lead_id === Number(leadId) ? { ...l, accepted: isNowAccepted } : l))
+                }
+            }
+        } catch (err) { console.error("Assignment status fetch failed", err) }
+
         setDetailLoading(false)
     }
 
@@ -249,7 +274,7 @@ export default function EmployeeTaskPage({ title, icon, filterType }: EmployeeTa
         setUploadSuccess(submission.isSubmitted)
         setEventDetails(null)
         setCreativeDetails(null)
-        fetchClientDetails(lead.lead_id)
+        fetchClientDetails(lead.lead_id, lead.task_name)
     }
 
     const handleBackToList = () => {
