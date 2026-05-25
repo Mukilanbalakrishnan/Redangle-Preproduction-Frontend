@@ -10,7 +10,7 @@ import {
 import { saveAssignTeam } from "../api/assignTeam.api";
 import {
   EmployeePicker,
-  TagInput,
+  AdditionalStaffPicker,
   buildAssignTeamPayload,
   getEmployeeDisplayName,
   type AssignTeamContext,
@@ -337,9 +337,14 @@ export default function AssignEditingTeam({
           }
         />
 
-        <TagInput
-          label="Additional Staff"
+        <AdditionalStaffPicker
           tags={context.additionalStaff}
+          employees={context.employees}
+          availableRoles={[
+            { key: "save_the_date", label: "Save the Date" },
+            { key: "save_the_video", label: "Save the Video" },
+            { key: "retouch", label: "Retouch" },
+          ]}
           onAdd={(value) =>
             context.setAdditionalStaff((previous) => [...previous, value])
           }

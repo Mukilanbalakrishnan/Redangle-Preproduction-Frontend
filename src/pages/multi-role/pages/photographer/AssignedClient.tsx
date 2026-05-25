@@ -81,7 +81,7 @@ const getStageStyle = (stage?: string) => {
 
 const isPhotographerTask = (taskName?: string) => {
     const normalized = (taskName || '').toLowerCase()
-    return normalized.includes('photography') || normalized.includes('photographer')
+    return normalized.includes('photography') || normalized.includes('photographer') || normalized.includes('additional staff') || normalized.includes('additional-staff')
 }
 
 const getAssignmentPhase = (stage?: string) => {
@@ -144,7 +144,7 @@ export default function PhotographerAssignedClient() {
     )
 
     // Fetch full client details when entering detail view
-    const fetchClientDetails = async (leadId: number | string, flowStage?: string) => {
+    const fetchClientDetails = async (leadId: number | string, flowStage?: string, taskName?: string) => {
         setDetailLoading(true)
         try {
             // Fetch event details
@@ -228,6 +228,28 @@ export default function PhotographerAssignedClient() {
             }
         } catch (err) { console.error("Assign team details fetch failed", err) }
 
+        try {
+            const statusRes = await axios.get(`${API_URL}/assign-team/${leadId}/status`)
+            if (statusRes.data?.success && statusRes.data.data && Array.isArray(statusRes.data.data.accepted_assignments)) {
+                const userRaw = localStorage.getItem('ra_user')
+                const user = userRaw ? JSON.parse(userRaw) : null
+                if (user) {
+                    const numericId = parseInt(String(user.employee_id).replace(/\D/g, ''), 10)
+                    const currentTaskName = taskName || selectedLead?.task_name || ''
+                    const taskKey = currentTaskName
+                        .toLowerCase()
+                        .replace(/[_-]+/g, ' ')
+                        .replace(/\s+/g, ' ')
+                        .trim()
+                        .replace(/[^a-z0-9]+/g, '-')
+                        .replace(/^-|-$/g, '')
+                    const assignmentKey = `${numericId}:${taskKey}`
+                    const isNowAccepted = statusRes.data.data.accepted_assignments.includes(assignmentKey)
+                    setSelectedLead(prev => prev ? { ...prev, accepted: isNowAccepted } : null)
+                    setLeads(prev => prev.map(l => l.lead_id === Number(leadId) ? { ...l, accepted: isNowAccepted } : l))
+                }
+            }
+        } catch (err) { console.error("Assignment status fetch failed", err) }
 
         setDetailLoading(false)
     }
@@ -245,7 +267,7 @@ export default function PhotographerAssignedClient() {
         setUploadSuccess(false)
         setEventDetails(null)
         setCreativeDetails(null); setShootLocations([])
-        fetchClientDetails(lead.lead_id, lead.flow_stage)
+        fetchClientDetails(lead.lead_id, lead.flow_stage, lead.task_name)
     }
 
     const handleBackToList = () => {

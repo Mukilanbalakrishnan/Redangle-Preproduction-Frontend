@@ -109,14 +109,14 @@ export default function MultiRoleDashboard() {
         if (uRoles.includes('photographer')) {
             cards.push({
                 label: 'Photographer', taskKey: 'Photography',
-                matchTokens: ['photography'],
+                matchTokens: ['photography', 'photographer'],
                 icon: Camera, color: '#2563eb', bg: '#EFF6FF', borderColor: '#BFDBFE'
             })
         }
         if (uRoles.includes('videographer')) {
             cards.push({
                 label: 'Videographer', taskKey: 'Videography',
-                matchTokens: ['videography'],
+                matchTokens: ['videography', 'videographer'],
                 icon: Video, color: '#059669', bg: '#ECFDF5', borderColor: '#A7F3D0'
             })
         }
