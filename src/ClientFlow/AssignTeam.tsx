@@ -42,6 +42,7 @@ export default function AssignTeam({
       onBack={onBack}
       onNext={onNext}
       client={client}
+      forceShootTeamOnly={forceShootTeamOnly}
     />
   );
 }

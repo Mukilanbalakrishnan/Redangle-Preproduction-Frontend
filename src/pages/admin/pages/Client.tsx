@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Search, Eye, Calendar, Pencil, Trash } from 'lucide-react'
 import InitialCallDetails from '../../../ClientFlow/InitialCallDetails'
 import AssignTeam from '../../../ClientFlow/AssignTeam'
+import CreativeConfirmation from '../../../ClientFlow/CreativeConfirmation'
 import axios from 'axios';
 import { useLocation } from 'react-router-dom';
 import { isPreProductionPhase, resolveClientFlowView } from '../../../ClientFlow/flowRouting';
@@ -26,7 +27,7 @@ export default function Client() {
 
   const [clientData, setClientData] = useState<any[]>([])
 
-  const [view, setView] = useState<'clientList' | 'callDetails' | 'assignTeam'>('clientList')
+  const [view, setView] = useState<'clientList' | 'callDetails' | 'creativeConfirmation' | 'assignTeam'>('clientList')
   const [selectedClient, setSelectedClient] = useState<any>(null)
 
   const [editClient, setEditClient] = useState<any>(null);
@@ -175,6 +176,16 @@ export default function Client() {
       <InitialCallDetails
         client={mappedClientContext}
         onBack={() => setView('clientList')}
+        onNext={() => setView('creativeConfirmation')}
+      />
+    )
+  }
+
+  if (view === 'creativeConfirmation' && mappedClientContext) {
+    return (
+      <CreativeConfirmation
+        client={mappedClientContext}
+        onBack={() => setView('callDetails')}
         onNext={() => setView('assignTeam')}
       />
     )
@@ -184,7 +195,7 @@ export default function Client() {
     return (
       <AssignTeam
         client={mappedClientContext}
-        onBack={() => setView('callDetails')}
+        onBack={() => setView('creativeConfirmation')}
         onNext={() => setView('clientList')}
         forceShootTeamOnly={true}
       />

@@ -15,11 +15,13 @@ export default function AssignShootTeam({
   onBack,
   onNext,
   client,
+  forceShootTeamOnly = false,
 }: {
   context: AssignTeamContext;
   onBack: () => void;
   onNext?: () => void;
   client?: any;
+  forceShootTeamOnly?: boolean;
 }) {
   const [loading, setLoading] = useState(false);
 
@@ -125,26 +127,32 @@ export default function AssignShootTeam({
               Assign Shoot Team
             </h2>
             <p className="text-sm" style={{ color: "#6B7280" }}>
-              Phase 1: Assign photographer and videographer for the shoot
+              {forceShootTeamOnly
+                ? "Assign photographer and videographer for the shoot"
+                : "Phase 1: Assign photographer and videographer for the shoot"}
             </p>
-            <div className="mt-2 flex items-center gap-2">
-              <span
-                className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700"
-              >
-                Step 1 of 2: Shooting
-              </span>
-            </div>
+            {!forceShootTeamOnly && (
+              <div className="mt-2 flex items-center gap-2">
+                <span
+                  className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700"
+                >
+                  Step 1 of 2: Shooting
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      <div
-        className="mb-6 rounded-2xl px-4 py-3 text-sm"
-        style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", color: "#1D4ED8" }}
-      >
-        This page is only for phase-1 capture roles. Phase-2 editors will be assigned
-        on the next screen after the shoot team is confirmed.
-      </div>
+      {!forceShootTeamOnly && (
+        <div
+          className="mb-6 rounded-2xl px-4 py-3 text-sm"
+          style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", color: "#1D4ED8" }}
+        >
+          This page is only for phase-1 capture roles. Phase-2 editors will be assigned
+          on the next screen after the shoot team is confirmed.
+        </div>
+      )}
 
       {/* ── Event Details ────────────────────────────────── */}
       <div

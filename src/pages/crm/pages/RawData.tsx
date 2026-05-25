@@ -3,7 +3,7 @@ import { Search, ChevronDown, Eye, Pencil, Trash2, Database, Image as ImageIcon,
 import axios from 'axios'
 import RawDataView from '../../data-manager/pages/RawDataView'
 import AssignTeam from '../../../ClientFlow/AssignTeam'
-import RawDataDelivery from './RawDataDelivery'
+import { toast } from 'sonner'
 
 type RawDataWorkflowPhase = 'pre_production' | 'event' | 'post_production' | 'all'
 
@@ -37,10 +37,35 @@ const STATUSES = ['All Status', 'Pending', 'Ready for CRM Review', 'CRM Verified
 export default function RawData({ workflowPhase = 'all', title, description }: RawDataProps = {}) {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('All Status')
-  const [view, setView] = useState<'list' | 'view' | 'assignTeam' | 'sendDelivery'>('list')
+  const [view, setView] = useState<'list' | 'view' | 'assignTeam'>('list')
   const [selectedData, setSelectedData] = useState<any | null>(null)
   const [rawData, setRawData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [sendingId, setSendingId] = useState<string | null>(null)
+
+  const handleSendToClient = async (row: any) => {
+    if (sendingId) return
+    setSendingId(row.id)
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
+      const res = await axios.post(`${API_URL}/crm/raw-data/${row.id}/send-to-client`)
+      if (res.data?.success) {
+        toast.success(res.data.message || 'Delivery details sent to client successfully!')
+        await fetchData()
+      } else {
+        toast.error(res.data?.message || 'Failed to send to client')
+      }
+    } catch (err: any) {
+      console.error('Error sending to client:', err)
+      toast.error(err.response?.data?.message || 'Failed to send to client')
+    } finally {
+      setSendingId(null)
+    }
+  }
+
+
+
+  const statuses = ['All Status', 'Pending', 'Ready for CRM Review', 'CRM Verified', 'DM Review Pending', 'Re-upload Requested', 'Rejected']
   const [editData, setEditData] = useState<any | null>(null)
   const [deleteData, setDeleteData] = useState<string | null>(null)
 
@@ -100,6 +125,8 @@ export default function RawData({ workflowPhase = 'all', title, description }: R
           statusMeta: getCrmStatusMeta(item.status),
           currentPhase: item.current_phase || '',
           preProductionStep: item.pre_production_step || 'shoot',
+          clientDeliveryStatus: item.client_delivery_status || null,
+          rawData: item
           rawData: item,
         }))
         setRawData(mapped)
@@ -128,6 +155,21 @@ export default function RawData({ workflowPhase = 'all', title, description }: R
     }
     return matchesSearch && matchesStatus && phaseMatch
   }), [rawData, search, statusFilter, workflowPhase])
+
+
+
+  if (view === 'assignTeam' && selectedData) {
+    return (
+      <AssignTeam
+        client={selectedData}
+        onBack={() => setView('list')}
+        onNext={() => {
+          setView('list')
+          fetchData()
+        }}
+      />
+    )
+  }
 
   // Summary stats
   const stats = useMemo(() => ({
@@ -162,6 +204,14 @@ export default function RawData({ workflowPhase = 'all', title, description }: R
       <RawDataView
         data={detailData} onBack={() => { setView('list'); fetchData() }}
         isCrmContext
+        onCrmVerify={() => {
+          setView('list')
+          fetchData()
+        }}
+      />
+    )
+  }
+
         onCrmVerify={() => { if (isEventPhase) { setView('list'); fetchData(); return } setView('sendDelivery') }}
         onSendToClient={() => setView('sendDelivery')}
         onAssignEditingTeam={() => setView('assignTeam')}
@@ -317,6 +367,60 @@ export default function RawData({ workflowPhase = 'all', title, description }: R
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                    No raw data records found matching your search.
+                  </td>
+                </tr>
+              ) : filtered.map((row) => (
+                <tr key={row.id} className="hover:bg-gray-50/50 transition-colors group">
+                  <td className="px-6 py-4">
+                    <span className="text-sm font-semibold text-indigo-600">#{row.serialNumber}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-gray-900">{row.employee}</span>
+                      <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">{row.role}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-700">{row.client}</td>
+                  <td className="px-6 py-4 text-sm text-gray-500">{row.date}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium text-gray-900">{row.images} Photos</span>
+                      <span className="text-xs text-gray-500">{row.videos} Videos ({row.size})</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${row.statusMeta.className}`}>
+                      {row.statusMeta.label}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex justify-end gap-2">
+                      {row.statusMeta.crmVerified && (
+                        <>
+                          {row.clientDeliveryStatus === 'client_approved' || row.clientDeliveryStatus === 'pending' || row.clientDeliveryStatus === 'sent_to_client' ? (
+                            <button
+                              onClick={() => {
+                                setSelectedData(row)
+                                setView('assignTeam')
+                              }}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all shadow-sm active:scale-95"
+                            >
+                              Assign Editors
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleSendToClient(row)}
+                              disabled={sendingId !== null}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-[#5B5FC7] hover:bg-[#4f46e5] rounded-xl transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <Send size={12} className={sendingId === row.id ? "animate-pulse" : ""} />
+                              {sendingId === row.id ? 'Sending...' : 'Send to Client'}
+                            </button>
+                          )}
+                        </>
+                      )}
                   <td colSpan={7} className="px-6 py-16 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-12 h-12 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center">
