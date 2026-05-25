@@ -1,18 +1,16 @@
 import { useState } from 'react'
-import { ArrowLeft, User, Calendar, Camera, Video, CheckCircle, RotateCcw, Image as ImageIcon, Send, Users } from 'lucide-react'
+import { ArrowLeft, User, Calendar, Camera, Video, CheckCircle, RotateCcw, Image as ImageIcon, Send } from 'lucide-react'
 import { toast } from 'sonner'
 
 const API_URL = import.meta.env.VITE_API_URL
 
-export default function RawDataView({ onBack, data, apiBasePath = '/data-manager', isCrmContext = false, onCrmVerify, onSendToClient, onAssignEditingTeam }: { onBack: () => void, data: any, apiBasePath?: string, isCrmContext?: boolean, onCrmVerify?: (leadId: string | number, clientName: string) => void, onSendToClient?: () => void, onAssignEditingTeam?: () => void }) {
+export default function RawDataView({ onBack, data, apiBasePath = '/data-manager', isCrmContext = false, onCrmVerify, onSendToClient }: { onBack: () => void, data: any, apiBasePath?: string, isCrmContext?: boolean, onCrmVerify?: (leadId: string | number, clientName: string) => void, onSendToClient?: () => void }) {
     const [submitting, setSubmitting] = useState(false)
     const rawData = data.rawData || {}
     // Drone belongs only to the live event phase. Prefer the normalized flag from the
     // parent list view; otherwise fall back to explicit current_phase metadata only.
     const currentPhase = String(data.currentPhase ?? rawData.current_phase ?? '').trim().toLowerCase()
-    const preProductionStep = String(data.preProductionStep ?? rawData.pre_production_step ?? 'shoot').trim().toLowerCase()
     const isEventPhase = currentPhase === 'event'
-    const shouldAssignEditingTeam = isCrmContext && currentPhase === 'pre_production' && preProductionStep === 'editing'
 
     // Use combined data if available (IncomingData combined format), else fall back to legacy shape
     const photographer = data.photographer ?? rawData.photographer ?? null
@@ -425,15 +423,7 @@ export default function RawDataView({ onBack, data, apiBasePath = '/data-manager
                                         </div>
                                     </div>
                                 </div>
-                                {shouldAssignEditingTeam && onAssignEditingTeam ? (
-                                    <button
-                                        onClick={onAssignEditingTeam}
-                                        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
-                                        style={{ background: 'linear-gradient(135deg, #5B5FC7, #4f46e5)' }}
-                                    >
-                                        <Users size={18} /> Assign Editing Team
-                                    </button>
-                                ) : isCrmContext && isCrmVerified && onSendToClient && (
+                                {isCrmContext && isCrmVerified && onSendToClient && (
                                     <button
                                         onClick={onSendToClient}
                                         className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Search, ChevronDown, Filter, Eye, Pencil, Trash } from 'lucide-react'
+import { Search, ChevronDown, Filter, Send } from 'lucide-react'
 import axios from 'axios'
 import RawDataView from '../../data-manager/pages/RawDataView'
 import AssignTeam from '../../../ClientFlow/AssignTeam'
-import RawDataDelivery from './RawDataDelivery'
+import { toast } from 'sonner'
 
 type RawDataWorkflowPhase = 'pre_production' | 'event' | 'post_production' | 'all'
 
@@ -80,42 +80,34 @@ export default function RawData({
 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('All Status')
-  const [view, setView] = useState<'list' | 'view' | 'assignTeam' | 'sendDelivery'>('list')
+  const [view, setView] = useState<'list' | 'view' | 'assignTeam'>('list')
   const [selectedData, setSelectedData] = useState<any | null>(null)
 
   const [rawData, setRawData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [sendingId, setSendingId] = useState<string | null>(null)
 
-  const [editData, setEditData] = useState<any | null>(null);
-  const [deleteData, setDeleteData] = useState<string | null>(null);
-
-  const handleEditSave = async () => {
-    if (!editData) return;
+  const handleSendToClient = async (row: any) => {
+    if (sendingId) return
+    setSendingId(row.id)
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
-      await axios.put(`${API_URL}/data-manager/incoming/${editData.id}`, {
-        num_images: parseInt(editData.images, 10),
-        num_videos: parseInt(editData.videos, 10)
-      });
-      setRawData(prev => prev.map(d => d.id === editData.id ? { ...d, images: parseInt(editData.images, 10) || 0, videos: parseInt(editData.videos, 10) || 0 } : d));
-      setEditData(null);
-    } catch (err) {
-      console.error("Failed to update raw data", err);
-      alert("Failed to update raw data");
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
+      const res = await axios.post(`${API_URL}/crm/raw-data/${row.id}/send-to-client`)
+      if (res.data?.success) {
+        toast.success(res.data.message || 'Delivery details sent to client successfully!')
+        await fetchData()
+      } else {
+        toast.error(res.data?.message || 'Failed to send to client')
+      }
+    } catch (err: any) {
+      console.error('Error sending to client:', err)
+      toast.error(err.response?.data?.message || 'Failed to send to client')
+    } finally {
+      setSendingId(null)
     }
-  };
+  }
 
-  const handleDelete = async (id: string) => {
-    try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
-      await axios.delete(`${API_URL}/data-manager/incoming/${id}`);
-      setRawData(prev => prev.filter(d => d.id !== id));
-      setDeleteData(null);
-    } catch (err) {
-      console.error("Failed to delete raw data", err);
-      alert("Failed to delete raw data");
-    }
-  };
+
 
   const statuses = ['All Status', 'Pending', 'Ready for CRM Review', 'CRM Verified', 'DM Review Pending', 'Re-upload Requested', 'Rejected']
 
@@ -150,6 +142,7 @@ export default function RawData({
           statusMeta: getCrmStatusMeta(item.status),
           currentPhase: item.current_phase || '',
           preProductionStep: item.pre_production_step || 'shoot',
+          clientDeliveryStatus: item.client_delivery_status || null,
           rawData: item
         }))
         setRawData(mappedData)
@@ -182,6 +175,21 @@ export default function RawData({
 
     return matchesSearch && matchesStatus && phaseMatch
   })
+
+
+
+  if (view === 'assignTeam' && selectedData) {
+    return (
+      <AssignTeam
+        client={selectedData}
+        onBack={() => setView('list')}
+        onNext={() => {
+          setView('list')
+          fetchData()
+        }}
+      />
+    )
+  }
 
   if (view === 'view' && selectedData) {
     const raw = selectedData.rawData || {}
@@ -219,25 +227,6 @@ export default function RawData({
         }}
         isCrmContext
         onCrmVerify={() => {
-          if (isEventPhase) {
-            setView('list')
-            fetchData()
-            return
-          }
-          setView('sendDelivery')
-        }}
-        onSendToClient={() => setView('sendDelivery')}
-        onAssignEditingTeam={() => setView('assignTeam')}
-      />
-    )
-  }
-
-  if (view === 'sendDelivery' && selectedData) {
-    return (
-      <RawDataDelivery
-        leadId={selectedData.serialNumber || selectedData.id}
-        onBack={() => setView('view')}
-        onSent={() => {
           setView('list')
           fetchData()
         }}
@@ -245,9 +234,6 @@ export default function RawData({
     )
   }
 
-  if (view === 'assignTeam' && selectedData) {
-    return <AssignTeam client={selectedData} onBack={() => setView('list')} onNext={() => { setView('list'); fetchData(); }} />
-  }
 
   return (
     <div className="space-y-6">
@@ -337,33 +323,31 @@ export default function RawData({
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-3">
-                      <button
-                        onClick={() => {
-                          setSelectedData(row)
-                          setView('view')
-                        }}
-                        className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
-                        title="View Data"
-                      >
-                        <Eye size={14} /> View
-                      </button>
-                      <button
-                        onClick={() => setEditData(row)}
-                        disabled={row.statusMeta.crmVerified}
-                        className={`flex items-center gap-1.5 text-xs font-semibold transition-colors ${row.statusMeta.crmVerified ? 'opacity-40 cursor-not-allowed text-gray-400' : 'text-gray-500 hover:text-indigo-600'}`}
-                        title={row.statusMeta.crmVerified ? "Cannot edit CRM verified data" : "Edit Data"}
-                      >
-                        <Pencil size={14} />
-                      </button>
-                      <button
-                        onClick={() => setDeleteData(row.id)}
-                        disabled={row.statusMeta.crmVerified}
-                        className={`flex items-center gap-1.5 text-xs font-semibold transition-colors ${row.statusMeta.crmVerified ? 'opacity-40 cursor-not-allowed text-gray-400' : 'text-gray-500 hover:text-red-500'}`}
-                        title={row.statusMeta.crmVerified ? "Cannot delete CRM verified data" : "Delete Data"}
-                      >
-                        <Trash size={14} />
-                      </button>
+                    <div className="flex justify-end gap-2">
+                      {row.statusMeta.crmVerified && (
+                        <>
+                          {row.clientDeliveryStatus === 'client_approved' || row.clientDeliveryStatus === 'pending' || row.clientDeliveryStatus === 'sent_to_client' ? (
+                            <button
+                              onClick={() => {
+                                setSelectedData(row)
+                                setView('assignTeam')
+                              }}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all shadow-sm active:scale-95"
+                            >
+                              Assign Editors
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleSendToClient(row)}
+                              disabled={sendingId !== null}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-[#5B5FC7] hover:bg-[#4f46e5] rounded-xl transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <Send size={12} className={sendingId === row.id ? "animate-pulse" : ""} />
+                              {sendingId === row.id ? 'Sending...' : 'Send to Client'}
+                            </button>
+                          )}
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -372,70 +356,6 @@ export default function RawData({
           </table>
         </div>
       </div>
-
-      {editData && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl">
-            <div className="p-6 border-b border-gray-100">
-              <h3 className="text-xl font-bold text-gray-900 text-center">Edit Media Counts</h3>
-              <p className="text-center text-sm text-gray-500 mt-1">Lead: #{editData.serialNumber}</p>
-            </div>
-            <div className="p-8 space-y-6">
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Number of Images</label>
-                <input
-                  type="number"
-                  value={editData.images}
-                  onChange={e => setEditData({ ...editData, images: e.target.value })}
-                  className="w-full px-5 py-4 bg-gray-50 rounded-2xl text-lg font-bold text-gray-900 border-none focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Number of Videos</label>
-                <input
-                  type="number"
-                  value={editData.videos}
-                  onChange={e => setEditData({ ...editData, videos: e.target.value })}
-                  className="w-full px-5 py-4 bg-gray-50 rounded-2xl text-lg font-bold text-gray-900 border-none focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
-                />
-              </div>
-            </div>
-            <div className="p-6 bg-gray-50 flex gap-3">
-              <button
-                onClick={() => setEditData(null)}
-                className="flex-1 px-6 py-4 rounded-2xl text-sm font-bold text-gray-500 hover:bg-gray-100 transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleEditSave}
-                className="flex-1 px-6 py-4 rounded-2xl text-sm font-bold text-white shadow-lg shadow-indigo-200 hover:scale-[1.02] active:scale-95 transition-all"
-                style={{ background: 'linear-gradient(135deg, #6366f1, #4f46e5)' }}
-              >
-                Save Changes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {deleteData && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl">
-            <div className="p-8 text-center">
-              <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Trash className="text-red-500" size={28} />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Record?</h3>
-              <p className="text-sm text-gray-500 leading-relaxed">This action cannot be undone. Are you sure you want to remove this raw data entry?</p>
-            </div>
-            <div className="p-6 flex gap-3">
-              <button onClick={() => setDeleteData(null)} className="flex-1 px-6 py-4 rounded-2xl text-sm font-bold text-gray-500 hover:bg-gray-100 transition-all">Cancel</button>
-              <button onClick={() => handleDelete(deleteData)} className="flex-1 px-6 py-4 rounded-2xl text-sm font-bold text-white bg-red-500 hover:bg-red-600 shadow-lg shadow-red-200 hover:scale-[1.02] active:scale-95 transition-all">Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Upload, RotateCcw, Search, Eye, Video, ArrowLeft, CheckCircle, User, CalendarDays, MapPin, Palette, Shirt, FileText } from 'lucide-react'
+import { Upload, RotateCcw, Search, Eye, Plane, ArrowLeft, CheckCircle, User, CalendarDays, MapPin, Palette, Shirt, FileText } from 'lucide-react'
 import axios from 'axios'
 
 const API_URL = import.meta.env.VITE_API_URL
@@ -79,9 +79,9 @@ const getStageStyle = (stage?: string) => {
     return 'bg-gray-50 text-gray-600 border-gray-100'
 }
 
-const isVideographerTask = (taskName?: string) => {
+const isDroneTask = (taskName?: string) => {
     const normalized = (taskName || '').toLowerCase()
-    return normalized.includes('videography') || normalized.includes('videographer')
+    return normalized.includes('drone')
 }
 
 const getAssignmentPhase = (stage?: string) => {
@@ -91,14 +91,14 @@ const getAssignmentPhase = (stage?: string) => {
     return ''
 }
 
-export default function VideographerAssignedClient() {
+export default function DroneAssignedClient() {
     const [view, setView] = useState<'list' | 'detail'>('list')
     const [leads, setLeads] = useState<Lead[]>([])
     const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
     const [search, setSearch] = useState('')
     const [loading, setLoading] = useState(true)
 
-    const [activeTab, setActiveTab] = useState<'client-details' | 'my-work' | 'upload' | 'rework'>('client-details')
+    const [activeTab, setActiveTab] = useState<'client-details' | 'upload' | 'rework'>('client-details')
 
     const [eventDetails, setEventDetails] = useState<EventDetails | null>(null)
     const [creativeDetails, setCreativeDetails] = useState<CreativeDetails | null>(null)
@@ -113,8 +113,6 @@ export default function VideographerAssignedClient() {
     const [uploadNotes, setUploadNotes] = useState('')
     const [uploadSuccess, setUploadSuccess] = useState(false)
 
-    // Removed timer states and effects
-
     useEffect(() => {
         const raw = localStorage.getItem('ra_user')
         if (!raw) return
@@ -127,7 +125,7 @@ export default function VideographerAssignedClient() {
             .then(result => {
                 if (result.success) {
                     setLeads((result.data || []).filter((lead: Lead) => {
-                        return isVideographerTask(lead.task_name)
+                        return isDroneTask(lead.task_name)
                     }))
                 }
             })
@@ -162,9 +160,8 @@ export default function VideographerAssignedClient() {
                     client_requirements: eventData.client_requirements || '',
                     event_status: eventData.event_status || ''
                 })
-                // Removed syncEventRuntimeState
 
-                // Load existing videographer upload data
+                // Load existing drone/video upload data
                 const existingLink = eventData.video_drive_link || ''
                 const existingDeliveryMethod = eventData.video_delivery_method || (eventData.video_hard_disk_delivery_date ? 'hard_disk' : 'drive_link')
                 const existingHardDiskDate = eventData.video_hard_disk_delivery_date || ''
@@ -229,8 +226,6 @@ export default function VideographerAssignedClient() {
         setView('list'); setSelectedLead(null); setActiveTab('client-details')
     }
 
-    // Removed handleAccept and handleStageUpdate
-
     const handleUploadSubmit = async () => {
         if (!selectedLead) return
         if (deliveryMethod === 'drive_link' && !driveLink) return
@@ -244,7 +239,7 @@ export default function VideographerAssignedClient() {
                     video_upload_notes: uploadNotes,
                     delivery_method: deliveryMethod,
                     hard_disk_delivery_date: deliveryMethod === 'hard_disk' ? hardDiskDeliveryDate : '',
-                    uploader_role: 'videographer'
+                    uploader_role: 'drone'
                 })
             })
             setUploadSuccess(true)
@@ -264,15 +259,15 @@ export default function VideographerAssignedClient() {
             <div>
                 <div className="mb-5">
                     <h1 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                        <Video size={20} className="text-green-600" /> Videographer — Assigned Clients
+                        <Plane size={20} className="text-teal-600" /> Drone — Assigned Clients
                     </h1>
-                    <p className="text-sm text-gray-500">Manage your videography assignments</p>
+                    <p className="text-sm text-gray-500">Manage your drone assignments</p>
                 </div>
 
                 <div className="relative mb-4 max-w-md">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                     <input type="text" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-100" />
+                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-100" />
                 </div>
 
                 {loading ? <p className="text-sm text-gray-400 py-8 text-center">Loading...</p>
@@ -296,7 +291,7 @@ export default function VideographerAssignedClient() {
                                     <tbody className="divide-y divide-gray-50">
                                         {filtered.map(lead => (
                                             <tr key={lead.lead_employee_id} className="hover:bg-gray-50/50">
-                                                <td className="px-4 py-3 font-medium text-green-600">{lead.lead_code || `LD-${lead.lead_id}`}</td>
+                                                <td className="px-4 py-3 font-medium text-teal-600">{lead.lead_code || `LD-${lead.lead_id}`}</td>
                                                 <td className="px-4 py-3 text-gray-900">{lead.name}</td>
                                                 <td className="px-4 py-3">
                                                     <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getStageStyle(lead.flow_stage)}`}>
@@ -327,8 +322,8 @@ export default function VideographerAssignedClient() {
                                         ))}
                                     </tbody>
                                 </table>
-                    </div>
-                )}
+                            </div>
+                        )}
             </div>
         )
     }
@@ -385,8 +380,7 @@ export default function VideographerAssignedClient() {
                             { label: 'Event Type', val: eventDetails?.event_type || selectedLead.type },
                             { label: 'Event Date', val: formatDate(eventDetails?.preferred_date || selectedLead.deadline) },
                             { label: 'Event Time', val: eventDetails?.preferred_time || '—' },
-                            { label: 'Location', val: eventDetails?.event_location || '—' },
-                            { label: 'Budget Range', val: eventDetails?.budget_range || '—' },
+                            { label: 'Outdoor Location', val: eventDetails?.event_location || '—' },
                             { label: 'Priority Level', val: eventDetails?.priority_level || selectedLead.priority || '—' },
                             { label: 'Meeting Type', val: eventDetails?.meeting_type || '—' },
                             { label: 'Task', val: selectedLead.task_name || '—' },
@@ -578,7 +572,7 @@ export default function VideographerAssignedClient() {
                 </button>
                 <div>
                     <h1 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                        <Video size={20} className="text-green-600" /> {selectedLead.name}
+                        <Plane size={20} className="text-teal-600" /> {selectedLead.name}
                     </h1>
                     <p className="text-sm text-gray-500">
                         {selectedLead.lead_code || `LD-${selectedLead.lead_id}`} • {selectedLead.type} • {selectedLead.task_name}
@@ -589,7 +583,7 @@ export default function VideographerAssignedClient() {
                 </span>
             </div>
 
-            <div className="mb-5 rounded-2xl border border-green-100 bg-green-50/70 p-4">
+            <div className="mb-5 rounded-2xl border border-teal-100 bg-teal-50/70 p-4">
                 <div className="flex flex-wrap items-center gap-3">
                     <span className={`rounded-full border px-3 py-1 text-xs font-bold ${getStageStyle(selectedLead.flow_stage)}`}>
                         {selectedLead.flow_stage || 'Workflow Stage'}
@@ -603,7 +597,6 @@ export default function VideographerAssignedClient() {
                 </p>
             </div>
 
-            
             {/* ACCEPTED — show tabs */}
             <>
                 {!selectedLead.accepted && (
@@ -638,7 +631,7 @@ export default function VideographerAssignedClient() {
                         const Icon = tab.icon
                         return (
                             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id ? 'bg-white text-green-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id ? 'bg-white text-teal-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'
                                     }`}>
                                 <Icon size={14} />{tab.label}
                             </button>
@@ -647,8 +640,6 @@ export default function VideographerAssignedClient() {
                 </div>
 
                 {activeTab === 'client-details' && renderClientDetails()}
-
-                {/* My Work Tab Removed */}
 
                 {activeTab === 'upload' && (
                     uploadLocked ? (
@@ -670,16 +661,16 @@ export default function VideographerAssignedClient() {
                         </div>
                     ) : (
                         <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
-                            <h3 className="text-base font-bold text-gray-900 mb-4">Deliver Videos</h3>
+                            <h3 className="text-base font-bold text-gray-900 mb-4">Deliver Footage</h3>
                             <p className="text-sm text-gray-500 mb-4">{selectedLead.name} — {selectedLead.lead_code}</p>
                             <div className="mb-5 grid grid-cols-2 gap-3">
                                 <button type="button" onClick={() => setDeliveryMethod('hard_disk')}
-                                    className={`rounded-xl border px-4 py-3 text-left text-sm font-semibold transition-colors ${deliveryMethod === 'hard_disk' ? 'border-green-300 bg-green-50 text-green-700' : 'border-gray-200 bg-white text-gray-600'}`}>
+                                    className={`rounded-xl border px-4 py-3 text-left text-sm font-semibold transition-colors ${deliveryMethod === 'hard_disk' ? 'border-teal-300 bg-teal-50 text-teal-700' : 'border-gray-200 bg-white text-gray-600'}`}>
                                     Hard Disk
                                     <span className="block text-xs font-medium text-gray-500">Send delivery date to Data Manager</span>
                                 </button>
                                 <button type="button" onClick={() => setDeliveryMethod('drive_link')}
-                                    className={`rounded-xl border px-4 py-3 text-left text-sm font-semibold transition-colors ${deliveryMethod === 'drive_link' ? 'border-green-300 bg-green-50 text-green-700' : 'border-gray-200 bg-white text-gray-600'}`}>
+                                    className={`rounded-xl border px-4 py-3 text-left text-sm font-semibold transition-colors ${deliveryMethod === 'drive_link' ? 'border-teal-300 bg-teal-50 text-teal-700' : 'border-gray-200 bg-white text-gray-600'}`}>
                                     Upload Drive Link
                                     <span className="block text-xs font-medium text-gray-500">Share a Google Drive folder</span>
                                 </button>
@@ -688,28 +679,28 @@ export default function VideographerAssignedClient() {
                                 {deliveryMethod === 'drive_link' ? (
                                     <div>
                                         <label className="block text-xs font-semibold text-gray-600 mb-1">Google Drive Link *</label>
-                                        <input value={driveLink} onChange={e => setDriveLink(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-100" placeholder="https://drive.google.com/..." />
+                                        <input value={driveLink} onChange={e => setDriveLink(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-100" placeholder="https://drive.google.com/..." />
                                     </div>
                                 ) : (
                                     <div>
                                         <label className="block text-xs font-semibold text-gray-600 mb-1">Hard Disk Delivery Date *</label>
-                                        <input type="date" value={hardDiskDeliveryDate} onChange={e => setHardDiskDeliveryDate(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-100" />
+                                        <input type="date" value={hardDiskDeliveryDate} onChange={e => setHardDiskDeliveryDate(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-100" />
                                     </div>
                                 )}
                                 <div>
                                     <label className="block text-xs font-semibold text-gray-600 mb-1">Camera Used</label>
-                                    <input value={cameraUsed} onChange={e => setCameraUsed(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-100" placeholder="Sony A7S III" />
+                                    <input value={cameraUsed} onChange={e => setCameraUsed(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-100" placeholder="Sony A7S III" />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-gray-600 mb-1">Number of Videos</label>
-                                    <input type="number" value={numVideos} onChange={e => setNumVideos(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-100" placeholder="0" />
+                                    <input type="number" value={numVideos} onChange={e => setNumVideos(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-100" placeholder="0" />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-gray-600 mb-1">Notes</label>
-                                    <input value={uploadNotes} onChange={e => setUploadNotes(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-100" placeholder="Additional notes..." />
+                                    <input value={uploadNotes} onChange={e => setUploadNotes(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-100" placeholder="Additional notes..." />
                                 </div>
                             </div>
-                            <button onClick={handleUploadSubmit} disabled={deliveryMethod === 'drive_link' ? !driveLink : !hardDiskDeliveryDate} className="mt-4 px-6 py-2.5 bg-green-600 text-white text-sm font-semibold rounded-xl hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">Send to Data Manager</button>
+                            <button onClick={handleUploadSubmit} disabled={deliveryMethod === 'drive_link' ? !driveLink : !hardDiskDeliveryDate} className="mt-4 px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Send to Data Manager</button>
                         </div>
                     )
                 )}
@@ -724,5 +715,3 @@ export default function VideographerAssignedClient() {
         </div>
     )
 }
-
-

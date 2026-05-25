@@ -2,7 +2,6 @@ import { forwardRef, useEffect, useImperativeHandle, useState, type ReactNode } 
 import {
   Check,
   CheckCircle2,
-  MapPin,
   Palette,
   Sparkles,
   Upload,
@@ -408,60 +407,6 @@ function CreativeConfirmationSection({ leadId, clientName: _clientName = "Client
           </div>
         </section>
       </div>
-
-      <section className={`${cardClass} mt-6`}>
-        <SectionTitle
-          icon={<MapPin size={18} />}
-          title="Location Details"
-          subtitle="Record the selected location and map reference for the creative team."
-        />
-        <div className="grid gap-4 lg:grid-cols-3">
-          <Field label="Location Name">
-            <input
-              className={inputClass}
-              type="text"
-              value={formData.location_name}
-              onChange={(event) => {
-                setIsSaved(false);
-      onSavedChange?.(false);
-                setFormData({ ...formData, location_name: event.target.value });
-              }}
-              placeholder="Venue or shoot location"
-            />
-          </Field>
-          <Field label="Location Type">
-            <EnhancedSelect
-              value={formData.location_type}
-              onChange={(value) => {
-                setIsSaved(false);
-      onSavedChange?.(false);
-                setFormData({ ...formData, location_type: value });
-              }}
-              placeholder="Indoor/Outdoor"
-              options={[
-                { value: "Indoor", label: "Indoor" },
-                { value: "Outdoor", label: "Outdoor" },
-              ]}
-            />
-          </Field>
-          <Field label="Google Map Link">
-            <input
-              className={inputClass}
-              type="url"
-              value={formData.google_map_link}
-              onChange={(event) => {
-                setIsSaved(false);
-      onSavedChange?.(false);
-                setFormData({ ...formData, google_map_link: event.target.value });
-              }}
-              placeholder="https://maps.google.com/..."
-            />
-          </Field>
-        </div>
-        <div className="mt-5 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-700">
-          <span className="font-bold">Note:</span> For outdoor locations, check weather conditions and keep a backup plan ready.
-        </div>
-      </section>
 
       <section className={`${cardClass} mt-6`}>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

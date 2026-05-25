@@ -7,9 +7,10 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import InitialCallDetails from '../../../ClientFlow/InitialCallDetails';
 import AssignTeam from '../../../ClientFlow/AssignTeam';
+import CreativeConfirmation from '../../../ClientFlow/CreativeConfirmation';
 import { isPreProductionPhase, resolveClientFlowView } from '../../../ClientFlow/flowRouting';
 
-type View = 'dashboard' | 'callDetails' | 'assignTeam';
+type View = 'dashboard' | 'callDetails' | 'creativeConfirmation' | 'assignTeam';
 
 export default function Dashboard() {
     const API_URL = import.meta.env.VITE_API_URL;
@@ -19,7 +20,6 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [view, setView] = useState<View>('dashboard');
     const [selectedClient, setSelectedClient] = useState<any>(null);
-    const [selectedPhaseStep, setSelectedPhaseStep] = useState<string | undefined>(undefined);
 
     const [stats, setStats] = useState({
         total: 0,
@@ -221,7 +221,6 @@ export default function Dashboard() {
             const phaseInfo = phaseRes?.data?.data;
             const freshStep = phaseInfo?.pre_production_step;
             setSelectedClient({ ...client, preProductionStep: freshStep, currentPhase: phaseInfo?.current_phase });
-            setSelectedPhaseStep(freshStep);
             const currentPhase = phaseInfo?.current_phase;
             if (!isPreProductionPhase(currentPhase)) {
                 setView('callDetails');
@@ -235,7 +234,6 @@ export default function Dashboard() {
             setView(resolveClientFlowView(currentStage));
         } catch {
             setSelectedClient(client);
-            setSelectedPhaseStep(undefined);
             setView('callDetails');
         }
     };
@@ -246,15 +244,21 @@ export default function Dashboard() {
             <InitialCallDetails
                 client={selectedClient}
                 onBack={() => setView('dashboard')}
+                onNext={() => setView('creativeConfirmation')}
+            />
+        );
+    }
+    if (view === 'creativeConfirmation' && selectedClient) {
+        return (
+            <CreativeConfirmation
+                client={selectedClient}
+                onBack={() => setView('callDetails')}
                 onNext={() => setView('assignTeam')}
-                expandCreativeSection={selectedPhaseStep === 'creative_confirmation'}
             />
         );
     }
     if (view === 'assignTeam' && selectedClient) {
-        const stepHint = selectedPhaseStep ?? selectedClient.preProductionStep;
-        const forceShoot = stepHint ? stepHint === 'shoot' : true;
-        return <AssignTeam client={selectedClient} onBack={() => setView('callDetails')} onNext={() => setView('dashboard')} forceShootTeamOnly={forceShoot} />;
+        return <AssignTeam client={selectedClient} onBack={() => setView('creativeConfirmation')} onNext={() => setView('dashboard')} forceShootTeamOnly={true} />;
     }
 
     return (

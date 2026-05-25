@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type ReactNode } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import {
   ArrowRight,
   AlertCircle,
@@ -6,7 +6,6 @@ import {
   ClipboardList,
   Clock,
   FileText,
-  ChevronDown,
   GitBranch,
   Mail,
   MapPin,
@@ -20,7 +19,6 @@ import { updateCurrentStage } from "../api/stageTracking.api";
 import { getExternalLeadById } from "../api/externalLead.api";
 import InvoicePreviewModal, { type PreviewInvoice } from "./InvoicePreviewModal";
 import axios from 'axios';
-import CreativeConfirmationSection, { type CreativeConfirmationHandle } from './CreativeConfirmationSection';
 import EnhancedSelect from '../components/EnhancedSelect';
 
 const toDateInputValue = (value?: string | Date | null) => {
@@ -61,7 +59,6 @@ interface Props {
   }
   onBack: () => void
   onNext?: () => void
-  expandCreativeSection?: boolean
 }
 
 interface EventFormData {
@@ -226,7 +223,7 @@ function Field({
   );
 }
 
-export default function InitialCallDetails({ client, onBack, onNext, expandCreativeSection }: Props) {
+export default function InitialCallDetails({ client, onBack, onNext }: Props) {
   const navigate = useNavigate();
   const [view, setView] = useState<View>('form')
   const actualId = client.id;
@@ -238,10 +235,6 @@ export default function InitialCallDetails({ client, onBack, onNext, expandCreat
   const [persistedFlowType, setPersistedFlowType] = useState<FlowType>('')
   const [currentPhase, setCurrentPhase] = useState('')
   const [phaseStatus, setPhaseStatus] = useState('')
-  const [currentStage, setCurrentStage] = useState('')
-  const [creativeOpen, setCreativeOpen] = useState(Boolean(expandCreativeSection))
-  const [creativeSaved, setCreativeSaved] = useState(false)
-  const creativeRef = useRef<CreativeConfirmationHandle>(null)
 
   const [formData, setFormData] = useState<EventFormData>(() => {
     const preferredDate = toDateInputValue(client.eventDate);
@@ -290,19 +283,13 @@ export default function InitialCallDetails({ client, onBack, onNext, expandCreat
   useEffect(() => {
     async function fetchPhaseInfo() {
       try {
-        const [phaseRes, stageRes] = await Promise.all([
-          axios.get(`${import.meta.env.VITE_API_URL}/crm/leads/${actualId}/phase-info`),
-          axios.get(`${import.meta.env.VITE_API_URL}/stage/${actualId}`).catch(() => null),
-        ]);
+        const phaseRes = await axios.get(`${import.meta.env.VITE_API_URL}/crm/leads/${actualId}/phase-info`);
         const phaseInfo = phaseRes.data?.data;
         const nextFlowType = (phaseInfo?.flow_type || '') as FlowType;
         setFlowType(nextFlowType);
         setPersistedFlowType(nextFlowType);
         setCurrentPhase(phaseInfo?.current_phase || '');
         setPhaseStatus(phaseInfo?.phase_status || '');
-        const stage = stageRes?.data?.data?.current_stage || '';
-        setCurrentStage(stage);
-        if (stage === 'creative_confirmation') setCreativeOpen(true);
       } catch (err) {
         console.error("Failed to fetch phase info", err);
       }
@@ -442,18 +429,7 @@ export default function InitialCallDetails({ client, onBack, onNext, expandCreat
     return <EmailCompose onBack={() => setView('form')} client={client} />
   }
 
-  // For post_wedding flow, the backend sets current_phase='event' immediately
-  // when the flow type is chosen, but we still want the user to fill in
-  // Creative Confirmation before showing the Event CRM
-  // handoff. Treat the event handoff as visible only after creative planning
-  // has been completed (current_stage advanced to team_assignment or later).
-  const postWeddingCreativeStepsPending =
-    persistedFlowType === 'post_wedding' &&
-    currentPhase === 'event' &&
-    currentStage !== 'team_assignment' &&
-    currentStage !== 'completed_assign_team';
-
-  const phaseDestination = persistedFlowType && currentPhase && currentPhase !== 'not_started' && currentPhase !== 'pre_production' && !postWeddingCreativeStepsPending
+  const phaseDestination = persistedFlowType && currentPhase && currentPhase !== 'not_started' && currentPhase !== 'pre_production'
     ? getPhaseDestination(currentPhase, phaseStatus, persistedFlowType)
     : null;
 
@@ -574,7 +550,7 @@ export default function InitialCallDetails({ client, onBack, onNext, expandCreat
 
       const effectivePhase = nextPhase || currentPhase;
       const shouldContinueToCreative =
-        effectivePhase === 'pre_production' || flowType === 'post_wedding';
+        effectivePhase === 'pre_production' || flowType === 'pre_wedding';
 
       if (shouldContinueToCreative) {
         await updateCurrentStage({
@@ -582,28 +558,7 @@ export default function InitialCallDetails({ client, onBack, onNext, expandCreat
           stage_name: "creative_confirmation",
         });
 
-        setCreativeOpen(true);
-        const creativeOk = await creativeRef.current?.save();
-        if (!creativeOk) {
-          alert("Please complete creative confirmation details before continuing.");
-          return;
-        }
-
-        await updateCurrentStage({
-          external_lead_id: String(actualId),
-          stage_name: "team_assignment",
-        });
-
-        if (flowType === 'post_wedding') {
-          alert(
-            'Event and creative details saved.\n\nNext stage: Event -> Event Coordinator. Go to the Event Coordinator module to set event details, assign the event team, and monitor event execution.'
-          );
-          navigate('/event-coordinator/client');
-          return;
-        }
-
-        const handoffPhase = flowType === 'pre_wedding' ? 'pre_production' : effectivePhase;
-        alert(`Event and creative details saved successfully.\n\n${getPhaseHandoffMessage(handoffPhase, flowType)}`);
+        alert("Event details saved successfully.\n\nProceeding to Creative Confirmation stage.");
         if (onNext) onNext();
       } else {
         const destinationMessage = getPhaseHandoffMessage(effectivePhase, flowType);
@@ -634,7 +589,7 @@ export default function InitialCallDetails({ client, onBack, onNext, expandCreat
   ];
   const primaryActionLabel =
     currentPhase === 'pre_production' || flowType === 'pre_wedding' || flowType === 'post_wedding'
-      ? 'Save & Assign Team'
+      ? 'Save & Proceed'
       : 'Save Details';
 
   return (
@@ -774,29 +729,18 @@ export default function InitialCallDetails({ client, onBack, onNext, expandCreat
               {!flowType && <p className="mt-2 text-xs text-amber-600">Select a flow type before saving.</p>}
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2">
               <Field label="Preferred Date">
                 <input type="date" value={formData.preferredDate} onChange={(event) => setFormData({ ...formData, preferredDate: event.target.value })} className={inputClass} />
               </Field>
               <Field label="Preferred Time">
                 <input type="time" value={formData.preferredTime} onChange={(event) => setFormData({ ...formData, preferredTime: event.target.value })} className={inputClass} />
               </Field>
-              <Field label="Event Location">
+              <Field label="Outdoor Location">
                 <div className="relative">
                   <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
                   <input value={formData.eventLocation} onChange={(event) => setFormData({ ...formData, eventLocation: event.target.value })} className={`${inputClass} pl-10`} />
                 </div>
-              </Field>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Budget Range">
-                <input
-                  value={formData.budgetRange}
-                  onChange={(event) => setFormData({ ...formData, budgetRange: event.target.value })}
-                  placeholder="Example: 1.5L - 2L"
-                  className={inputClass}
-                />
               </Field>
               <Field label="Priority Level">
                 <EnhancedSelect
@@ -924,45 +868,7 @@ export default function InitialCallDetails({ client, onBack, onNext, expandCreat
         </div>
       </section>
 
-      <section className={`${cardClass} relative z-10`}>
-        <Field label="Creative Confirmation">
-          <button
-            type="button"
-            onClick={() => setCreativeOpen((open) => !open)}
-            className={`flex w-full items-center justify-between gap-3 rounded-2xl border bg-white px-4 py-3 text-left text-sm outline-none transition ${
-              creativeOpen
-                ? 'border-indigo-400 ring-4 ring-indigo-100'
-                : 'border-slate-200 hover:border-indigo-300'
-            }`}
-          >
-            <span className={`truncate ${creativeSaved ? 'text-slate-950' : 'text-slate-400'}`}>
-              {creativeSaved
-                ? 'Creative details saved — click to edit'
-                : 'Add costume, palette, concept, references, and location'}
-            </span>
-            <ChevronDown
-              size={18}
-              className={`shrink-0 text-slate-400 transition ${creativeOpen ? 'rotate-180 text-indigo-500' : ''}`}
-            />
-          </button>
-        </Field>
 
-        <div
-          className={
-            creativeOpen
-              ? 'relative z-[200] mt-4 overflow-visible rounded-[24px] border border-slate-200 bg-white p-1 shadow-2xl shadow-slate-200/80'
-              : 'hidden'
-          }
-        >
-          <CreativeConfirmationSection
-            ref={creativeRef}
-            leadId={String(actualId)}
-            clientName={clientName}
-            flowType={flowType}
-            onSavedChange={setCreativeSaved}
-          />
-        </div>
-      </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className={cardClass}>
@@ -1014,7 +920,7 @@ export default function InitialCallDetails({ client, onBack, onNext, expandCreat
       <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white px-4 py-4 shadow-[0_-12px_32px_rgba(15,23,42,0.08)] lg:left-[280px] lg:px-8">
         <div className="mx-auto flex max-w-[1500px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-xs text-slate-500">
-            {flowType ? `Ready to save as ${selectedFlow?.label || 'selected flow'}. Expand Creative Confirmation to add shoot creative details.` : 'Select a flow type before saving.'}
+            {flowType ? `Ready to save as ${selectedFlow?.label || 'selected flow'}.` : 'Select a flow type before saving.'}
           </div>
           <div className="flex flex-wrap justify-end gap-3">
             <button type="button" onClick={onBack} className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50">

@@ -68,8 +68,13 @@ export default function Attendance() {
 
     const formatTime = (timeStr: string | null) => {
         if (!timeStr) return '--'
-        // If it's a PG time string "HH:MM:SS"
         try {
+            if (timeStr.includes('-') || timeStr.includes('/') || timeStr.includes('T')) {
+                const date = new Date(timeStr)
+                if (!isNaN(date.getTime())) {
+                    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                }
+            }
             const [hours, minutes] = timeStr.split(':')
             const date = new Date()
             date.setHours(parseInt(hours, 10))
@@ -79,6 +84,16 @@ export default function Attendance() {
             return timeStr
         }
     }
+
+    const todayStr = new Date().toLocaleDateString('en-CA')
+    const todayRecord = attendanceData.find(record => {
+        if (!record.date) return false
+        const rDateStr = record.date.includes('T') ? record.date.split('T')[0] : record.date
+        return rDateStr === todayStr
+    })
+    const hasPunchedInToday = !!todayRecord?.check_in
+    const hasPunchedOutToday = !!todayRecord?.check_out
+
     return (
         <div className="space-y-6 max-w-6xl">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -89,7 +104,7 @@ export default function Attendance() {
                 <div className="flex gap-3">
                     <button
                         onClick={handleClockIn}
-                        disabled={actionLoading}
+                        disabled={actionLoading || hasPunchedInToday}
                         className="bg-green-500 hover:bg-green-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm tracking-wide transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50"
                     >
                         <LogIn size={18} />
@@ -97,7 +112,7 @@ export default function Attendance() {
                     </button>
                     <button
                         onClick={handleClockOut}
-                        disabled={actionLoading}
+                        disabled={actionLoading || !hasPunchedInToday || hasPunchedOutToday}
                         className="bg-red-500 hover:bg-red-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm tracking-wide transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50"
                     >
                         <LogOut size={18} />

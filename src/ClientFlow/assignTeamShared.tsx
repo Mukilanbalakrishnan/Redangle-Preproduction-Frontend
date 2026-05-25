@@ -35,6 +35,7 @@ export interface Employee {
   last_name?: string;
   role?: string;
   roles?: string | string[] | null;
+  phone?: string;
 }
 
 interface SavedTeamData extends Partial<TeamData> {
