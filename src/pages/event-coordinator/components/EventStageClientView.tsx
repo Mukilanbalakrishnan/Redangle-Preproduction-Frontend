@@ -524,7 +524,7 @@ export default function EventStageClientView({ client, onBack, onNext }: Props) 
             </InputShell>
           </div>
           <div>
-            <FieldLabel>Location</FieldLabel>
+            <FieldLabel>Outdoor Location</FieldLabel>
             <InputShell>
               <div className="flex items-center gap-2">
                 <MapPin size={15} style={{ color: '#9CA3AF' }} />

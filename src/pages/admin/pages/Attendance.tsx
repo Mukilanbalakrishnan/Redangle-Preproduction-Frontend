@@ -32,6 +32,12 @@ export default function Attendance() {
     const formatTime = (timeStr: string | null) => {
         if (!timeStr) return '--'
         try {
+            if (timeStr.includes('-') || timeStr.includes('/') || timeStr.includes('T')) {
+                const date = new Date(timeStr)
+                if (!isNaN(date.getTime())) {
+                    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                }
+            }
             const [hours, minutes] = timeStr.split(':')
             const date = new Date()
             date.setHours(parseInt(hours, 10))

@@ -1,5 +1,6 @@
 export type ClientFlowView =
   | 'callDetails'
+  | 'creativeConfirmation'
   | 'assignTeam';
 
 export const isPreProductionPhase = (currentPhase?: string | null) =>
@@ -10,7 +11,7 @@ export const resolveClientFlowView = (
 ): ClientFlowView => {
   switch (currentStage) {
     case 'creative_confirmation':
-      return 'callDetails';
+      return 'creativeConfirmation';
     case 'creative_planning':
     case 'team_assignment':
     case 'completed_assign_team':

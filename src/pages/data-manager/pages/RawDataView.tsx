@@ -36,9 +36,7 @@ export default function RawDataView({
     const [submitting, setSubmitting] = useState(false)
     const rawData = data.rawData || {}
     const currentPhase = String(data.currentPhase ?? rawData.current_phase ?? '').trim().toLowerCase()
-    const preProductionStep = String(data.preProductionStep ?? rawData.pre_production_step ?? 'shoot').trim().toLowerCase()
     const isEventPhase = currentPhase === 'event'
-    const shouldAssignEditingTeam = isCrmContext && currentPhase === 'pre_production' && preProductionStep === 'editing'
 
     const photographer = data.photographer ?? rawData.photographer ?? null
     const videographer = data.videographer ?? rawData.videographer ?? null
@@ -489,6 +487,7 @@ export default function RawDataView({
                                         </button>
                                     )}
                                 </div>
+                                {isCrmContext && isCrmVerified && onSendToClient && (
                             ) : (
                                 <div className="space-y-3">
                                     {/* Warning hint */}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Filter, Download, Eye, Pencil, Phone, Trash } from 'lucide-react'
+import { Filter, Download, Eye, Phone } from 'lucide-react'
 import Badge from '../components/ui/Badge'
 import InitialCallDetails from '../../../ClientFlow/InitialCallDetails'
 import axios from "axios";
@@ -33,8 +33,9 @@ interface ClientProps {
 
 
 import AssignTeam from '../../../ClientFlow/AssignTeam'
+import CreativeConfirmation from '../../../ClientFlow/CreativeConfirmation'
 
-type View = 'list' | 'callDetails' | 'assignTeam'
+type View = 'list' | 'callDetails' | 'creativeConfirmation' | 'assignTeam'
 
 const formatLeadStatus = (lead: any) => {
   const rawStatus = String(lead.status || '').trim().toLowerCase();
@@ -71,8 +72,6 @@ export default function Client({
   const [eventDateSearch, setEventDateSearch] = useState('');
   const [view, setView] = useState<View>('list');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const [selectedPhaseStep, setSelectedPhaseStep] = useState<string | undefined>(undefined);
-  const [openCreativeSection, setOpenCreativeSection] = useState(false);
 
   const [editClient, setEditClient] = useState<Client | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -142,15 +141,21 @@ export default function Client({
       <InitialCallDetails
         client={selectedClient}
         onBack={() => setView('list')}
+        onNext={() => setView('creativeConfirmation')}
+      />
+    );
+  }
+  if (view === 'creativeConfirmation' && selectedClient) {
+    return (
+      <CreativeConfirmation
+        client={selectedClient}
+        onBack={() => setView('callDetails')}
         onNext={() => setView('assignTeam')}
-        expandCreativeSection={openCreativeSection}
       />
     );
   }
   if (view === 'assignTeam' && selectedClient) {
-    const stepHint = selectedPhaseStep ?? selectedClient.preProductionStep;
-    const forceShoot = stepHint ? stepHint === 'shoot' : true;
-    return <AssignTeam client={selectedClient} onBack={() => setView('callDetails')} onNext={() => setView('list')} forceShootTeamOnly={forceShoot} />;
+    return <AssignTeam client={selectedClient} onBack={() => setView('creativeConfirmation')} onNext={() => setView('list')} forceShootTeamOnly={true} />;
   }
 
   const filtered = clients.filter(c => {
@@ -189,7 +194,6 @@ export default function Client({
       const phaseInfo = phaseRes?.data?.data;
       const freshStep = phaseInfo?.pre_production_step ?? client.preProductionStep;
       setSelectedClient({ ...client, preProductionStep: freshStep, currentPhase: phaseInfo?.current_phase ?? client.currentPhase });
-      setSelectedPhaseStep(freshStep);
       const currentPhase = phaseInfo?.current_phase;
       const currentStage = stageRes?.data?.data?.current_stage;
 
@@ -197,23 +201,20 @@ export default function Client({
       // show the workflow-handoff card inside InitialCallDetails instead of the
       // assign-team page so users aren't sent back to a stage that's already done.
       if (currentPhase === 'event' || currentPhase === 'post_production') {
-        setOpenCreativeSection(false);
-      setView("callDetails");
+        setView("callDetails");
         return;
       }
 
       // Allow opening if it's pre-production OR not started yet
       if (!isPreProductionPhase(currentPhase) && currentPhase !== 'not_started' && currentPhase) {
-        setOpenCreativeSection(false);
-      setView("callDetails");
+        setView("callDetails");
         return;
       }
 
       // Pre-production assignment already finished but phase reconciliation
       // hasn't bumped current_phase yet — also treat as a workflow handoff.
       if (currentStage === 'completed_assign_team') {
-        setOpenCreativeSection(false);
-      setView("callDetails");
+        setView("callDetails");
         return;
       }
 
@@ -225,15 +226,13 @@ export default function Client({
           setView("assignTeam");
           return;
         }
-        setOpenCreativeSection(currentStage === 'creative_confirmation');
-      setView(resolveClientFlowView(currentStage));
+        setView(resolveClientFlowView(currentStage));
         return;
       }
       if (phaseInfo?.pre_production_step === 'editing') {
         setView("assignTeam");
         return;
       }
-      setOpenCreativeSection(currentStage === 'creative_confirmation');
       setView(resolveClientFlowView(currentStage));
 
     } catch (error) {
@@ -241,8 +240,6 @@ export default function Client({
 
       // If stage record not found → go to first stage
       setSelectedClient(client);
-      setSelectedPhaseStep(client.preProductionStep);
-      setOpenCreativeSection(false);
       setView("callDetails");
     }
   };
@@ -338,22 +335,6 @@ export default function Client({
                   <div className="flex gap-3" style={{ color: '#9CA3AF' }}>
                     <button onClick={() => handleOpenClient(c)} title="View Details">
                       <Eye size={15} className="hover:text-indigo-600 transition-colors" />
-                    </button>
-                    <button 
-                      onClick={() => setEditClient(c)} 
-                      disabled={c.status === 'Completed'}
-                      className={`transition-colors ${c.status === 'Completed' ? 'opacity-20 cursor-not-allowed' : 'hover:text-indigo-600'}`} 
-                      title={c.status === 'Completed' ? "Cannot edit completed lead" : "Edit Client"}
-                    >
-                      <Pencil size={14} />
-                    </button>
-                    <button 
-                      onClick={() => setDeleteConfirm(c.id)} 
-                      disabled={c.status === 'Completed'}
-                      className={`transition-colors ${c.status === 'Completed' ? 'opacity-20 cursor-not-allowed' : 'hover:text-red-500'}`} 
-                      title={c.status === 'Completed' ? "Cannot delete completed lead" : "Delete Client"}
-                    >
-                      <Trash size={14} />
                     </button>
                     <button 
                       disabled={c.status === 'Completed'}
