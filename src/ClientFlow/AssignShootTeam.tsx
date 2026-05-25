@@ -4,7 +4,7 @@ import { approveShootPhase, updateCurrentStage } from "../api/stageTracking.api"
 import { saveAssignTeam } from "../api/assignTeam.api";
 import {
   EmployeePicker,
-  TagInput,
+  AdditionalStaffPicker,
   ShootLocationInput,
   buildAssignTeamPayload,
   type AssignTeamContext,
@@ -154,6 +154,88 @@ export default function AssignShootTeam({
         </div>
       )}
 
+      {/* ── Event Details ────────────────────────────────── */}
+      <div
+        className="mb-6 rounded-2xl p-6"
+        style={{ border: "1px solid #E5E7EB" }}
+      >
+        <div className="mb-5 flex items-center gap-2">
+          <svg
+            width="16"
+            height="16"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <h3 className="text-sm font-bold" style={{ color: "#111827" }}>
+            Event Details
+          </h3>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          {/* Event Date */}
+          <div>
+            <label
+              className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.06em]"
+              style={{ color: "#6B7280" }}
+            >
+              Event Date
+            </label>
+            <input
+              type="date"
+              value={context.teamData.event_date}
+              onChange={(e) =>
+                context.setTeamData((prev) => ({ ...prev, event_date: e.target.value }))
+              }
+              className="w-full rounded-xl border px-3 py-2.5 text-sm font-medium outline-none transition-colors focus:border-purple-400"
+              style={{ borderColor: "#E5E7EB", color: "#0F172A" }}
+            />
+          </div>
+
+          {/* Event Time */}
+          <div>
+            <label
+              className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.06em]"
+              style={{ color: "#6B7280" }}
+            >
+              Event Time
+            </label>
+            <input
+              type="time"
+              value={context.teamData.event_time}
+              onChange={(e) =>
+                context.setTeamData((prev) => ({ ...prev, event_time: e.target.value }))
+              }
+              className="w-full rounded-xl border px-3 py-2.5 text-sm font-medium outline-none transition-colors focus:border-purple-400"
+              style={{ borderColor: "#E5E7EB", color: "#0F172A" }}
+            />
+          </div>
+
+          {/* Location */}
+          <div>
+            <label
+              className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.06em]"
+              style={{ color: "#6B7280" }}
+            >
+              Venue / Location
+            </label>
+            <input
+              type="text"
+              value={context.teamData.location}
+              onChange={(e) =>
+                context.setTeamData((prev) => ({ ...prev, location: e.target.value }))
+              }
+              placeholder="e.g. Chennai, Mahabalipuram"
+              className="w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition-colors focus:border-purple-400"
+              style={{ borderColor: "#E5E7EB", color: "#0F172A" }}
+            />
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 gap-6 mb-6">
         <EmployeePicker
           label="Photographer"
@@ -200,9 +282,13 @@ export default function AssignShootTeam({
           }
         />
 
-        <TagInput
-          label="Additional Staff"
+        <AdditionalStaffPicker
           tags={context.additionalStaff}
+          employees={context.employees}
+          availableRoles={[
+            { key: "photographer", label: "Photographer" },
+            { key: "videographer", label: "Videographer" },
+          ]}
           onAdd={(value) =>
             context.setAdditionalStaff((previous) => [...previous, value])
           }
@@ -224,7 +310,10 @@ export default function AssignShootTeam({
             </svg>
           }
         />
+      </div>
 
+      {/* ── Shoot Locations ── full-width section below the grid ── */}
+      <div className="mb-6">
         <ShootLocationInput
           locations={context.shootLocations}
           onAdd={(loc) => context.setShootLocations((prev) => [...prev, loc])}

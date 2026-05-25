@@ -40,13 +40,17 @@ interface EventDetails {
     meeting_type: string
     meeting_details: string
     client_requirements: string
-    video_drive_link?: string
-    video_camera_used?: string
-    num_videos?: number
-    video_upload_notes?: string
-    video_delivery_method?: string
-    video_hard_disk_delivery_date?: string
-    video_upload_phase?: string
+    drone_photo_drive_link?: string
+    drone_video_drive_link?: string
+    drone_camera_used?: string
+    drone_video_camera_used?: string
+    drone_num_images?: number
+    drone_num_videos?: number
+    drone_upload_notes?: string
+    drone_video_upload_notes?: string
+    drone_delivery_method?: string
+    drone_hard_disk_delivery_date?: string
+    drone_upload_phase?: string
     event_status?: string
 }
 
@@ -82,6 +86,7 @@ const getStageStyle = (stage?: string) => {
 const isDroneTask = (taskName?: string) => {
     const normalized = (taskName || '').toLowerCase()
     return normalized.includes('drone')
+    return normalized.includes('drone') || normalized.includes('additional staff') || normalized.includes('additional-staff')
 }
 
 const getAssignmentPhase = (stage?: string) => {
@@ -139,7 +144,7 @@ export default function DroneAssignedClient() {
         l.type?.toLowerCase().includes(search.toLowerCase())
     )
 
-    const fetchClientDetails = async (leadId: number | string, flowStage?: string) => {
+    const fetchClientDetails = async (leadId: number | string, flowStage?: string, taskName?: string) => {
         setDetailLoading(true)
         try {
             const eventRes = await axios.get(`${API_URL}/event-details/${leadId}`)
@@ -166,12 +171,17 @@ export default function DroneAssignedClient() {
                 const existingDeliveryMethod = eventData.video_delivery_method || (eventData.video_hard_disk_delivery_date ? 'hard_disk' : 'drive_link')
                 const existingHardDiskDate = eventData.video_hard_disk_delivery_date || ''
                 const uploadPhase = eventData.video_upload_phase || ''
+                // Load existing drone upload data
+                const existingLink = eventData.drone_video_drive_link || eventData.drone_photo_drive_link || ''
+                const existingDeliveryMethod = eventData.drone_delivery_method || (eventData.drone_hard_disk_delivery_date ? 'hard_disk' : 'drive_link')
+                const existingHardDiskDate = eventData.drone_hard_disk_delivery_date || ''
+                const uploadPhase = eventData.drone_upload_phase || ''
                 const assignmentPhase = getAssignmentPhase(flowStage || selectedLead?.flow_stage)
                 const linkBelongsToAssignment = Boolean(existingLink) && (!uploadPhase || !assignmentPhase || uploadPhase === assignmentPhase)
                 const hardDiskBelongsToAssignment = Boolean(existingHardDiskDate) && Boolean(uploadPhase) && (!assignmentPhase || uploadPhase === assignmentPhase)
-                const existingCamera = eventData.video_camera_used || ''
-                const existingVideos = eventData.num_videos || 0
-                const existingNotes = eventData.video_upload_notes || ''
+                const existingCamera = eventData.drone_video_camera_used || eventData.drone_camera_used || ''
+                const existingVideos = eventData.drone_num_videos || 0
+                const existingNotes = eventData.drone_video_upload_notes || eventData.drone_upload_notes || ''
                 if (linkBelongsToAssignment || hardDiskBelongsToAssignment) {
                     setDeliveryMethod(existingDeliveryMethod === 'hard_disk' ? 'hard_disk' : 'drive_link')
                     setDriveLink(linkBelongsToAssignment ? existingLink : '')
@@ -208,6 +218,29 @@ export default function DroneAssignedClient() {
             }
         } catch (err) { console.error("Assign team details fetch failed", err) }
 
+        try {
+            const statusRes = await axios.get(`${API_URL}/assign-team/${leadId}/status`)
+            if (statusRes.data?.success && statusRes.data.data && Array.isArray(statusRes.data.data.accepted_assignments)) {
+                const userRaw = localStorage.getItem('ra_user')
+                const user = userRaw ? JSON.parse(userRaw) : null
+                if (user) {
+                    const numericId = parseInt(String(user.employee_id).replace(/\D/g, ''), 10)
+                    const currentTaskName = taskName || selectedLead?.task_name || ''
+                    const taskKey = currentTaskName
+                        .toLowerCase()
+                        .replace(/[_-]+/g, ' ')
+                        .replace(/\s+/g, ' ')
+                        .trim()
+                        .replace(/[^a-z0-9]+/g, '-')
+                        .replace(/^-|-$/g, '')
+                    const assignmentKey = `${numericId}:${taskKey}`
+                    const isNowAccepted = statusRes.data.data.accepted_assignments.includes(assignmentKey)
+                    setSelectedLead(prev => prev ? { ...prev, accepted: isNowAccepted } : null)
+                    setLeads(prev => prev.map(l => l.lead_id === Number(leadId) ? { ...l, accepted: isNowAccepted } : l))
+                }
+            }
+        } catch (err) { console.error("Assignment status fetch failed", err) }
+
         setDetailLoading(false)
     }
 
@@ -219,7 +252,7 @@ export default function DroneAssignedClient() {
         setDeliveryMethod('drive_link'); setHardDiskDeliveryDate('')
         setUploadSuccess(false);
         setEventDetails(null); setCreativeDetails(null); setShootLocations([])
-        fetchClientDetails(lead.lead_id, lead.flow_stage)
+        fetchClientDetails(lead.lead_id, lead.flow_stage, lead.task_name)
     }
 
     const handleBackToList = () => {
@@ -232,10 +265,16 @@ export default function DroneAssignedClient() {
         if (deliveryMethod === 'hard_disk' && !hardDiskDeliveryDate) return
         try {
             await fetch(`${API_URL}/event-details/${selectedLead.lead_id}/upload`, {
-                method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    video_drive_link: deliveryMethod === 'drive_link' ? driveLink : '', video_camera_used: cameraUsed,
-                    num_images: 0, num_videos: Number(numVideos) || 0,
+                    drive_link: deliveryMethod === 'drive_link' ? driveLink : '',
+                    video_drive_link: deliveryMethod === 'drive_link' ? driveLink : '',
+                    camera_used: cameraUsed,
+                    video_camera_used: cameraUsed,
+                    num_images: 0,
+                    num_videos: Number(numVideos) || 0,
+                    upload_notes: uploadNotes,
                     video_upload_notes: uploadNotes,
                     delivery_method: deliveryMethod,
                     hard_disk_delivery_date: deliveryMethod === 'hard_disk' ? hardDiskDeliveryDate : '',
@@ -244,7 +283,7 @@ export default function DroneAssignedClient() {
             })
             setUploadSuccess(true)
             setLeads(prev => prev.map(l => l.lead_id === selectedLead.lead_id ? { ...l, upload_complete: true } : l))
-            await fetchClientDetails(selectedLead.lead_id, selectedLead.flow_stage)
+            await fetchClientDetails(selectedLead.lead_id, selectedLead.flow_stage, selectedLead.task_name)
         } catch (err) { console.error(err) }
     }
 

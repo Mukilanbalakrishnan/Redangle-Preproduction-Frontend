@@ -56,6 +56,7 @@ export default function AssignedClient() {
 
     const roleLeads = leads.filter(p => {
         const task = (p.task_name || '').toLowerCase()
+        if (task.includes('additional staff')) return true
         if (isDrone) return task.includes('drone')
         if (isVideographer) return task.includes('video')
         if (isPhotographer) return task.includes('photo')
@@ -94,7 +95,7 @@ export default function AssignedClient() {
                             <tr><td colSpan={7} className="text-center px-5 py-10 text-sm" style={{ color: '#9CA3AF' }}>No assigned leads found</td></tr>
                         ) : (
                             filteredLeads.map((lead) => (
-    <tr key={lead.lead_id} style={{ borderTop: '1px solid #F3F4F6' }}>
+                                <tr key={lead.lead_id} style={{ borderTop: '1px solid #F3F4F6' }}>
                                     <td className="px-5 py-3 text-sm font-medium" style={{ color: '#5B5FC7' }}>{lead.lead_code || `LD-${lead.lead_id}`}</td>
                                     <td className="px-5 py-3 text-sm font-medium" style={{ color: '#111827' }}>{lead.name}</td>
                                     <td className="px-5 py-3 text-sm" style={{ color: '#111827' }}>{lead.type || '—'}</td>
@@ -112,7 +113,8 @@ export default function AssignedClient() {
                                                     date: lead.deadline,
                                                     status: lead.priority,
                                                     lead_id: String(lead.lead_id),
-                                                    task_name: lead.task_name
+                                                    task_name: lead.task_name,
+                                                    accepted: lead.accepted
                                                 })
                                                 setView('details')
                                             }}
@@ -131,4 +133,3 @@ export default function AssignedClient() {
         </div>
     )
 }
-
