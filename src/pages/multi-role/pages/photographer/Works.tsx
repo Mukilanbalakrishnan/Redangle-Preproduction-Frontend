@@ -15,6 +15,7 @@ interface WorkItem {
     deadline: string
     created_at?: string
     upload_link?: string
+    task_key?: string
 }
 
 const getPriorityStyle = (p: string) => {
@@ -52,7 +53,14 @@ export default function PhotographerWorks() {
 
         fetch(`${API_URL}/employee/${empId}/my-work`)
             .then(r => r.json())
-            .then(result => { if (result.success) setWorks(sortNewestFirst(result.data || [])) })
+            .then(result => {
+                if (result.success) {
+                    const filtered = (result.data || []).filter((w: WorkItem) => 
+                        ['photography', 'secondary-photography'].includes(w.task_key || '')
+                    );
+                    setWorks(sortNewestFirst(filtered))
+                }
+            })
             .catch(console.error)
             .finally(() => setLoading(false))
     }, [])

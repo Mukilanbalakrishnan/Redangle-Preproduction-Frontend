@@ -21,6 +21,7 @@ interface Lead {
     work_saved?: boolean
     upload_complete?: boolean
     status?: string
+    reupload_remarks?: string
 }
 
 interface EventDetails {
@@ -117,6 +118,15 @@ export default function DroneAssignedClient() {
     const [numVideos, setNumVideos] = useState('')
     const [uploadNotes, setUploadNotes] = useState('')
     const [uploadSuccess, setUploadSuccess] = useState(false)
+    const [shootDate, setShootDate] = useState('')
+    const [shootName, setShootName] = useState('')
+    const [shootLocation, setShootLocation] = useState('')
+    const [cardType, setCardType] = useState('')
+    const [serviceName, setServiceName] = useState('')
+    const [mediaCount, setMediaCount] = useState('')
+    const [cr3Mode, setCr3Mode] = useState<'with_cr3' | 'without_cr3'>('without_cr3')
+    const [firstClip, setFirstClip] = useState<string | File>('')
+    const [lastClip, setLastClip] = useState<string | File>('')
 
     useEffect(() => {
         const raw = localStorage.getItem('ra_user')
@@ -166,11 +176,6 @@ export default function DroneAssignedClient() {
                     event_status: eventData.event_status || ''
                 })
 
-                // Load existing drone/video upload data
-                const existingLink = eventData.video_drive_link || ''
-                const existingDeliveryMethod = eventData.video_delivery_method || (eventData.video_hard_disk_delivery_date ? 'hard_disk' : 'drive_link')
-                const existingHardDiskDate = eventData.video_hard_disk_delivery_date || ''
-                const uploadPhase = eventData.video_upload_phase || ''
                 // Load existing drone upload data
                 const existingLink = eventData.drone_video_drive_link || eventData.drone_photo_drive_link || ''
                 const existingDeliveryMethod = eventData.drone_delivery_method || (eventData.drone_hard_disk_delivery_date ? 'hard_disk' : 'drive_link')
@@ -263,24 +268,28 @@ export default function DroneAssignedClient() {
         if (!selectedLead) return
         if (deliveryMethod === 'drive_link' && !driveLink) return
         if (deliveryMethod === 'hard_disk' && !hardDiskDeliveryDate) return
+
+        const shootDetails = {
+            shoot_date: shootDate, shoot_name: shootName, shoot_location: shootLocation,
+            client_name: eventDetails?.client_name || selectedLead.name || '',
+            card_type: cardType, service: serviceName, media_count: Number(mediaCount) || 0,
+            cr3_mode: cr3Mode, first_clip: typeof firstClip === 'string' ? firstClip : '',
+            last_clip: typeof lastClip === 'string' ? lastClip : '',
+        }
+        const formData = new FormData()
+        formData.append('drive_link', deliveryMethod === 'drive_link' ? driveLink : '')
+        formData.append('camera_used', cameraUsed)
+        formData.append('num_images', '0')
+        formData.append('num_videos', String(Number(mediaCount) || 0))
+        formData.append('upload_notes', JSON.stringify(shootDetails))
+        formData.append('delivery_method', deliveryMethod)
+        formData.append('hard_disk_delivery_date', deliveryMethod === 'hard_disk' ? hardDiskDeliveryDate : '')
+        formData.append('uploader_role', 'drone')
+        if (firstClip instanceof File) formData.append('firstClipFile', firstClip)
+        if (lastClip instanceof File) formData.append('lastClipFile', lastClip)
+
         try {
-            await fetch(`${API_URL}/event-details/${selectedLead.lead_id}/upload`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    drive_link: deliveryMethod === 'drive_link' ? driveLink : '',
-                    video_drive_link: deliveryMethod === 'drive_link' ? driveLink : '',
-                    camera_used: cameraUsed,
-                    video_camera_used: cameraUsed,
-                    num_images: 0,
-                    num_videos: Number(numVideos) || 0,
-                    upload_notes: uploadNotes,
-                    video_upload_notes: uploadNotes,
-                    delivery_method: deliveryMethod,
-                    hard_disk_delivery_date: deliveryMethod === 'hard_disk' ? hardDiskDeliveryDate : '',
-                    uploader_role: 'drone'
-                })
-            })
+            await fetch(`${API_URL}/event-details/${selectedLead.lead_id}/upload`, { method: 'PATCH', body: formData })
             setUploadSuccess(true)
             setLeads(prev => prev.map(l => l.lead_id === selectedLead.lead_id ? { ...l, upload_complete: true } : l))
             await fetchClientDetails(selectedLead.lead_id, selectedLead.flow_stage, selectedLead.task_name)
@@ -373,7 +382,7 @@ export default function DroneAssignedClient() {
     const detailTabs = [
         { id: 'client-details' as const, label: 'Client Details', icon: Eye },
         { id: 'upload' as const, label: 'Upload', icon: Upload },
-        { id: 'rework' as const, label: 'Rework', icon: RotateCcw },
+        { id: 'rework' as const, label: 'Rework', icon: RotateCcw, hasAlert: Boolean(selectedLead.reupload_remarks) },
     ]
     const uploadLocked = getAssignmentPhase(selectedLead.flow_stage) === 'event' && String(eventDetails?.event_status || '').toLowerCase() !== 'ended'
 
@@ -670,9 +679,12 @@ export default function DroneAssignedClient() {
                         const Icon = tab.icon
                         return (
                             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id ? 'bg-white text-teal-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                                className={`relative flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id ? 'bg-white text-teal-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'
                                     }`}>
                                 <Icon size={14} />{tab.label}
+                                {tab.hasAlert && (
+                                    <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+                                )}
                             </button>
                         )
                     })}
@@ -714,7 +726,7 @@ export default function DroneAssignedClient() {
                                     <span className="block text-xs font-medium text-gray-500">Share a Google Drive folder</span>
                                 </button>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-4 mb-4">
                                 {deliveryMethod === 'drive_link' ? (
                                     <div>
                                         <label className="block text-xs font-semibold text-gray-600 mb-1">Google Drive Link *</label>
@@ -726,20 +738,30 @@ export default function DroneAssignedClient() {
                                         <input type="date" value={hardDiskDeliveryDate} onChange={e => setHardDiskDeliveryDate(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-100" />
                                     </div>
                                 )}
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-600 mb-1">Camera Used</label>
-                                    <input value={cameraUsed} onChange={e => setCameraUsed(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-100" placeholder="Sony A7S III" />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-600 mb-1">Number of Videos</label>
-                                    <input type="number" value={numVideos} onChange={e => setNumVideos(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-100" placeholder="0" />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-600 mb-1">Notes</label>
-                                    <input value={uploadNotes} onChange={e => setUploadNotes(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-100" placeholder="Additional notes..." />
-                                </div>
                             </div>
-                            <button onClick={handleUploadSubmit} disabled={deliveryMethod === 'drive_link' ? !driveLink : !hardDiskDeliveryDate} className="mt-4 px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Send to Data Manager</button>
+                            <div className="border-t border-gray-100 mb-5" />
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Shoot Information</p>
+                            <div className="grid grid-cols-3 gap-4 mb-4">
+                                <div><label className="block text-xs font-semibold text-gray-600 mb-1">Date *</label><input type="date" value={shootDate} onChange={e => setShootDate(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-100" /></div>
+                                <div><label className="block text-xs font-semibold text-gray-600 mb-1">Shoot</label><input value={shootName} onChange={e => setShootName(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-100" placeholder="e.g. Wedding Ceremony" /></div>
+                                <div><label className="block text-xs font-semibold text-gray-600 mb-1">Location</label><input value={shootLocation} onChange={e => setShootLocation(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-100" placeholder="e.g. Grand Palace Hotel" /></div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-4 mb-4">
+                                <div><label className="block text-xs font-semibold text-gray-600 mb-1">Client Name</label><input value={eventDetails?.client_name || selectedLead.name || ''} readOnly className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-600 cursor-not-allowed" /></div>
+                                <div><label className="block text-xs font-semibold text-gray-600 mb-1">Card Type</label><input value={cardType} onChange={e => setCardType(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-100" placeholder="e.g. CFexpress Type A" /></div>
+                                <div><label className="block text-xs font-semibold text-gray-600 mb-1">Service</label><input value={serviceName} onChange={e => setServiceName(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-100" placeholder="e.g. Drone Coverage" /></div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-4 mb-4">
+                                <div><label className="block text-xs font-semibold text-gray-600 mb-1">Count</label><input type="number" value={mediaCount} onChange={e => setMediaCount(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-100" placeholder="0" /></div>
+                                <div className="col-span-2"><label className="block text-xs font-semibold text-gray-600 mb-1">Camera Used</label><input value={cameraUsed} onChange={e => setCameraUsed(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-100" placeholder="DJI Mavic 3" /></div>
+                            </div>
+                            <div className="border-t border-gray-100 mb-5 mt-5" />
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">First & Last Clip of Shoot Footage</p>
+                            <div className="grid grid-cols-2 gap-4 mb-5">
+                                <div><label className="block text-xs font-semibold text-gray-600 mb-1">First Clip / File Name</label>{typeof firstClip === 'string' && firstClip !== '' ? (<div className="flex items-center gap-2"><span className="text-sm text-teal-600 bg-teal-50 px-3 py-1 rounded-lg">Uploaded</span><button onClick={() => setFirstClip('')} className="text-xs text-red-500 hover:text-red-700 underline">Replace</button></div>) : (<input type="file" onChange={e => e.target.files?.[0] && setFirstClip(e.target.files[0])} className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-100 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100" />)}</div>
+                                <div><label className="block text-xs font-semibold text-gray-600 mb-1">Last Clip / File Name</label>{typeof lastClip === 'string' && lastClip !== '' ? (<div className="flex items-center gap-2"><span className="text-sm text-teal-600 bg-teal-50 px-3 py-1 rounded-lg">Uploaded</span><button onClick={() => setLastClip('')} className="text-xs text-red-500 hover:text-red-700 underline">Replace</button></div>) : (<input type="file" onChange={e => e.target.files?.[0] && setLastClip(e.target.files[0])} className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-100 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100" />)}</div>
+                            </div>
+                            <button onClick={handleUploadSubmit} disabled={deliveryMethod === 'drive_link' ? !driveLink : !hardDiskDeliveryDate} className="mt-2 px-6 py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-xl hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Send to Data Manager</button>
                         </div>
                     )
                 )}
@@ -747,7 +769,18 @@ export default function DroneAssignedClient() {
                 {activeTab === 'rework' && (
                     <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
                         <h3 className="text-base font-bold text-gray-900 mb-4">Rework Requests</h3>
-                        <p className="text-sm text-gray-400 py-4 text-center">Rework requests will appear here.</p>
+                        {selectedLead?.reupload_remarks ? (
+                            <div className="flex flex-col gap-4">
+                                <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-r-xl">
+                                    <p className="text-sm text-orange-800 whitespace-pre-wrap">{selectedLead.reupload_remarks}</p>
+                                </div>
+                                <div>
+                                    <button onClick={() => { setActiveTab('upload'); setUploadSuccess(false); setSelectedLead(prev => prev ? { ...prev, reupload_remarks: '' } : null); setLeads(prevLeads => prevLeads.map(l => l.lead_id === selectedLead.lead_id ? { ...l, reupload_remarks: '' } : l)); }} className="px-4 py-2 bg-orange-500 text-white text-sm font-semibold rounded-lg hover:bg-orange-600 transition-colors">Accept Rework & Upload</button>
+                                </div>
+                            </div>
+                        ) : (
+                            <p className="text-sm text-gray-400 py-4 text-center">Rework requests will appear here.</p>
+                        )}
                     </div>
                 )}
             </>

@@ -112,6 +112,19 @@ export default function RoleSwitcher() {
     navigate('/multi-role/dashboard');
   };
 
+  if (isMultiRoleView) {
+    return (
+      <div className="flex items-center gap-1.5">
+        <span className="hidden sm:inline text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1">Active Roles:</span>
+        {roles.map((role) => (
+          <span key={role} className="px-2 py-1 bg-purple-50 text-purple-700 text-xs font-semibold rounded-md border border-purple-100 whitespace-nowrap">
+            {roleLabelMap[role] || role}
+          </span>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div ref={ref} className="relative">
       <button

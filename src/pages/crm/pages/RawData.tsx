@@ -1,9 +1,27 @@
-import { useState, useEffect, useMemo } from 'react'
-import { Search, ChevronDown, Eye, Pencil, Trash2, Database, Image as ImageIcon, Video, HardDrive, CheckCircle2, Clock, AlertCircle, RotateCcw, XCircle, RefreshCw } from 'lucide-react'
+import React, { useState, useEffect, useMemo } from 'react'
+import { Search, ChevronDown, Eye, Pencil, Trash2, Database, Image as ImageIcon, Video, HardDrive, CheckCircle2, Clock, AlertCircle, RotateCcw, XCircle, RefreshCw, Send, Users } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import RawDataView from '../../data-manager/pages/RawDataView'
-import AssignTeam from '../../../ClientFlow/AssignTeam'
+import AssignEditingTeam from '../../../ClientFlow/AssignEditingTeam'
+import { useAssignTeamContext } from '../../../ClientFlow/assignTeamShared'
 import { toast } from 'sonner'
+
+// Wrapper that loads context then renders AssignEditingTeam
+function AssignEditingTeamWrapper({ clientId, onBack, onNext }: { clientId: string; onBack: () => void; onNext: () => void }) {
+  const context = useAssignTeamContext(clientId);
+  if (context.isLoading) {
+    return (
+      <div className="rounded-[32px] bg-white p-10 shadow-sm" style={{ border: '1px solid #E5E7EB' }}>
+        <div className="flex flex-col items-center gap-3 py-16">
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900" />
+          <p className="text-sm" style={{ color: '#6B7280' }}>Loading editing team workspace...</p>
+        </div>
+      </div>
+    );
+  }
+  return <AssignEditingTeam context={context} onBack={onBack} onNext={onNext} />;
+}
 
 type RawDataWorkflowPhase = 'pre_production' | 'event' | 'post_production' | 'all'
 
@@ -42,6 +60,8 @@ export default function RawData({ workflowPhase = 'all', title, description }: R
   const [rawData, setRawData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [sendingId, setSendingId] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const navigate = useNavigate()
 
   const handleSendToClient = async (row: any) => {
     if (sendingId) return
@@ -126,7 +146,6 @@ export default function RawData({ workflowPhase = 'all', title, description }: R
           currentPhase: item.current_phase || '',
           preProductionStep: item.pre_production_step || 'shoot',
           clientDeliveryStatus: item.client_delivery_status || null,
-          rawData: item
           rawData: item,
         }))
         setRawData(mapped)
@@ -156,21 +175,6 @@ export default function RawData({ workflowPhase = 'all', title, description }: R
     return matchesSearch && matchesStatus && phaseMatch
   }), [rawData, search, statusFilter, workflowPhase])
 
-
-
-  if (view === 'assignTeam' && selectedData) {
-    return (
-      <AssignTeam
-        client={selectedData}
-        onBack={() => setView('list')}
-        onNext={() => {
-          setView('list')
-          fetchData()
-        }}
-      />
-    )
-  }
-
   // Summary stats
   const stats = useMemo(() => ({
     total: rawData.length,
@@ -182,6 +186,16 @@ export default function RawData({ workflowPhase = 'all', title, description }: R
   }), [rawData])
 
   // ── Sub-views ───────────────────────────────────────────────────────────
+  if (view === 'assignTeam' && selectedData) {
+    return (
+      <AssignEditingTeamWrapper
+        clientId={String(selectedData.id)}
+        onBack={() => setView('list')}
+        onNext={() => { setView('list'); fetchData() }}
+      />
+    )
+  }
+
   if (view === 'view' && selectedData) {
     const raw = selectedData.rawData || {}
     const phase = String(raw.current_phase || '').trim().toLowerCase()
@@ -212,88 +226,19 @@ export default function RawData({ workflowPhase = 'all', title, description }: R
     )
   }
 
-        onCrmVerify={() => { if (isEventPhase) { setView('list'); fetchData(); return } setView('sendDelivery') }}
-        onSendToClient={() => setView('sendDelivery')}
-        onAssignEditingTeam={() => setView('assignTeam')}
-      />
-    )
-  }
-
-  if (view === 'sendDelivery' && selectedData) {
-    return (
-      <RawDataDelivery
-        leadId={selectedData.serialNumber || selectedData.id}
-        onBack={() => setView('view')}
-        onSent={() => { setView('list'); fetchData() }}
-      />
-    )
-  }
-
-  if (view === 'assignTeam' && selectedData) {
-    return <AssignTeam client={selectedData} onBack={() => setView('list')} onNext={() => { setView('list'); fetchData() }} />
-  }
-
   // ── List View ───────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-extrabold text-gray-900 tracking-tight">{title || 'Raw Data'}</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{description || 'Monitor and verify incoming raw media from field teams'}</p>
-        </div>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-extrabold text-gray-900 tracking-tight">{title || 'Raw Data'}</h1>
         <button
           onClick={fetchData}
-          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm self-start sm:self-auto"
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
         >
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           Refresh
         </button>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {[
-          { label: 'Total Records', value: stats.total, icon: Database, color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100' },
-          { label: 'CRM Verified', value: stats.verified, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
-          { label: 'Awaiting Review', value: stats.pending, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
-          { label: 'Needs Action', value: stats.needsAction, icon: AlertCircle, color: 'text-red-500', bg: 'bg-red-50', border: 'border-red-100' },
-        ].map(s => {
-          const Icon = s.icon
-          return (
-            <div key={s.label} className={`bg-white border ${s.border} rounded-2xl px-5 py-4 flex items-center justify-between shadow-sm hover:shadow-md transition-shadow`}>
-              <div>
-                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{s.label}</p>
-                <p className={`text-2xl font-extrabold mt-1 ${s.color}`}>{s.value}</p>
-              </div>
-              <div className={`w-10 h-10 rounded-xl ${s.bg} flex items-center justify-center`}>
-                <Icon size={18} className={s.color} />
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Media Summary Bar */}
-      <div className="bg-white border border-gray-100 rounded-2xl px-6 py-4 flex flex-wrap items-center gap-6 shadow-sm">
-        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Media Summary</span>
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 bg-blue-50 rounded-lg"><ImageIcon size={14} className="text-blue-600" /></div>
-          <span className="text-sm font-bold text-gray-700">{stats.totalPhotos.toLocaleString()}</span>
-          <span className="text-xs text-gray-400">total photos</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 bg-pink-50 rounded-lg"><Video size={14} className="text-pink-600" /></div>
-          <span className="text-sm font-bold text-gray-700">{stats.totalVideos.toLocaleString()}</span>
-          <span className="text-xs text-gray-400">total videos</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 bg-purple-50 rounded-lg"><HardDrive size={14} className="text-purple-600" /></div>
-          <span className="text-sm font-bold text-gray-700">
-            {((stats.totalPhotos * 0.05) + (stats.totalVideos * 0.5)).toFixed(1)} GB
-          </span>
-          <span className="text-xs text-gray-400">estimated storage</span>
-        </div>
       </div>
 
       {/* Filters */}
@@ -371,76 +316,18 @@ export default function RawData({ workflowPhase = 'all', title, description }: R
                     No raw data records found matching your search.
                   </td>
                 </tr>
-              ) : filtered.map((row) => (
-                <tr key={row.id} className="hover:bg-gray-50/50 transition-colors group">
-                  <td className="px-6 py-4">
-                    <span className="text-sm font-semibold text-indigo-600">#{row.serialNumber}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-col">
-                      <span className="text-sm font-semibold text-gray-900">{row.employee}</span>
-                      <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">{row.role}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{row.client}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{row.date}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-col">
-                      <span className="text-sm font-medium text-gray-900">{row.images} Photos</span>
-                      <span className="text-xs text-gray-500">{row.videos} Videos ({row.size})</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${row.statusMeta.className}`}>
-                      {row.statusMeta.label}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      {row.statusMeta.crmVerified && (
-                        <>
-                          {row.clientDeliveryStatus === 'client_approved' || row.clientDeliveryStatus === 'pending' || row.clientDeliveryStatus === 'sent_to_client' ? (
-                            <button
-                              onClick={() => {
-                                setSelectedData(row)
-                                setView('assignTeam')
-                              }}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all shadow-sm active:scale-95"
-                            >
-                              Assign Editors
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleSendToClient(row)}
-                              disabled={sendingId !== null}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-[#5B5FC7] hover:bg-[#4f46e5] rounded-xl transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              <Send size={12} className={sendingId === row.id ? "animate-pulse" : ""} />
-                              {sendingId === row.id ? 'Sending...' : 'Send to Client'}
-                            </button>
-                          )}
-                        </>
-                      )}
-                  <td colSpan={7} className="px-6 py-16 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="w-12 h-12 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center">
-                        <Database size={22} className="text-gray-300" />
-                      </div>
-                      <p className="text-sm font-semibold text-gray-500">No records found</p>
-                      <p className="text-xs text-gray-400">Try adjusting your search or filter criteria</p>
-                    </div>
-                  </td>
-                </tr>
-              ) : filtered.map(row => {
+              ) : (() => {
+                const ROWS_PER_PAGE = 10
+                const totalPages = Math.ceil(filtered.length / ROWS_PER_PAGE)
+                const safePage = Math.min(currentPage, totalPages || 1)
+                const paginatedData = filtered.slice((safePage - 1) * ROWS_PER_PAGE, safePage * ROWS_PER_PAGE)
+                return paginatedData.map(row => {
                 const StatusIcon = row.statusMeta.icon
                 return (
                   <tr key={row.id} className="hover:bg-indigo-50/20 transition-colors group">
-                    {/* Lead ID */}
                     <td className="px-6 py-4">
                       <span className="text-sm font-extrabold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg">#{row.serialNumber}</span>
                     </td>
-
-                    {/* Shooter */}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-extrabold shadow-sm shrink-0">
@@ -452,18 +339,12 @@ export default function RawData({ workflowPhase = 'all', title, description }: R
                         </div>
                       </div>
                     </td>
-
-                    {/* Client */}
                     <td className="px-6 py-4">
                       <p className="text-sm font-semibold text-gray-800">{row.client}</p>
                     </td>
-
-                    {/* Date */}
                     <td className="px-6 py-4">
                       <p className="text-sm text-gray-500 font-medium">{row.date}</p>
                     </td>
-
-                    {/* Media counts */}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="flex items-center gap-1.5">
@@ -478,25 +359,47 @@ export default function RawData({ workflowPhase = 'all', title, description }: R
                         <span className="text-[10px] text-gray-400 font-medium">({row.size})</span>
                       </div>
                     </td>
-
-                    {/* Status */}
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold border ${row.statusMeta.className}`}>
                         <StatusIcon size={11} strokeWidth={2.5} />
                         {row.statusMeta.label}
                       </span>
                     </td>
-
-                    {/* Actions */}
                     <td className="px-6 py-4">
                       <div className="flex justify-end items-center gap-1">
-                        <button
-                          onClick={() => { setSelectedData(row); setView('view') }}
-                          className="p-2 rounded-lg text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 transition-all"
-                          title="View details"
-                        >
-                          <Eye size={15} />
-                        </button>
+                        {row.statusMeta.crmVerified && (
+                          <>
+                            <button
+                              onClick={() => { setSelectedData(row); setView('assignTeam'); }}
+                              className="p-2 rounded-lg text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 transition-all flex items-center gap-1 text-xs font-semibold mr-1"
+                              title="Assign Editors"
+                            >
+                              <Users size={15} />
+                              <span className="hidden xl:inline">Assign</span>
+                            </button>
+                            {!row.clientDeliveryStatus && (
+                              <button
+                                onClick={() => handleSendToClient(row)}
+                                disabled={sendingId === row.id}
+                                className={`p-2 rounded-lg transition-all flex items-center gap-1 text-xs font-semibold mr-1 ${
+                                  sendingId === row.id ? 'opacity-50 text-gray-400' : 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50'
+                                }`}
+                                title="Send to Client"
+                              >
+                                {sendingId === row.id ? <RefreshCw size={15} className="animate-spin" /> : <Send size={15} />}
+                              </button>
+                            )}
+                          </>
+                        )}
+                        {workflowPhase !== 'pre_production' && (
+                          <button
+                            onClick={() => { setSelectedData(row); setView('view') }}
+                            className="p-2 rounded-lg text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 transition-all"
+                            title="View details"
+                          >
+                            <Eye size={15} />
+                          </button>
+                        )}
                         <button
                           onClick={() => setEditData(row)}
                           disabled={row.statusMeta.crmVerified}
@@ -517,24 +420,57 @@ export default function RawData({ workflowPhase = 'all', title, description }: R
                     </td>
                   </tr>
                 )
-              })}
+              })
+              })()
+              }
             </tbody>
           </table>
         </div>
 
-        {/* Table Footer */}
-        {!loading && filtered.length > 0 && (
-          <div className="px-6 py-3 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
-            <span className="text-xs text-gray-400 font-medium">
-              Showing <span className="font-bold text-gray-600">{filtered.length}</span> of <span className="font-bold text-gray-600">{rawData.length}</span> records
-            </span>
-            <div className="flex items-center gap-4 text-xs text-gray-400">
-              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-400" /><span>Verified</span></div>
-              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-400" /><span>Pending</span></div>
-              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-red-400" /><span>Action needed</span></div>
+        {/* Pagination Footer */}
+        {!loading && filtered.length > 0 && (() => {
+          const ROWS_PER_PAGE = 10
+          const totalPages = Math.ceil(filtered.length / ROWS_PER_PAGE)
+          const safePage = Math.min(currentPage, totalPages || 1)
+          const startRow = (safePage - 1) * ROWS_PER_PAGE + 1
+          const endRow = Math.min(safePage * ROWS_PER_PAGE, filtered.length)
+          return (
+            <div className="px-6 py-3 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
+              <span className="text-xs text-gray-400 font-medium">
+                Showing <span className="font-bold text-gray-600">{startRow}–{endRow}</span> of <span className="font-bold text-gray-600">{filtered.length}</span> records
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={safePage <= 1}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                >
+                  Previous
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-8 h-8 text-xs font-bold rounded-lg transition-all ${
+                      page === safePage
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'text-gray-500 hover:bg-gray-100'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={safePage >= totalPages}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                >
+                  Next
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )
+        })()}
       </div>
 
       {/* ── Edit Modal ── */}
