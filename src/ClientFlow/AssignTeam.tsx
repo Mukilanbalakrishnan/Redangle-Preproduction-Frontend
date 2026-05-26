@@ -7,11 +7,13 @@ export default function AssignTeam({
   onNext,
   onBack,
   forceShootTeamOnly = false,
+  forceEditingTeamOnly = false,
 }: {
   client: { id: string; serialNumber?: string };
   onNext: () => void;
   onBack: () => void;
   forceShootTeamOnly?: boolean;
+  forceEditingTeamOnly?: boolean;
 }) {
   const actualId = String(client.id);
   const context = useAssignTeamContext(actualId);
@@ -32,7 +34,7 @@ export default function AssignTeam({
     );
   }
 
-  if (!forceShootTeamOnly && context.currentPhase === "pre_production" && context.preProductionStep === "editing") {
+  if (forceEditingTeamOnly || (!forceShootTeamOnly && context.currentPhase === "pre_production" && context.preProductionStep === "editing")) {
     return <AssignEditingTeam context={context} onBack={onBack} onNext={onNext} />;
   }
 

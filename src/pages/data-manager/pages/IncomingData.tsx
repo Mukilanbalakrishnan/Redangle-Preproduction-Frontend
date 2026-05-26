@@ -41,8 +41,11 @@ export default function IncomingData() {
                             id: item.lead_serial_number || String(item.id),
                             rawId: String(item.id),
                     photographer: item.photographer || null,
+                    photographerName: item.photographer_name || null,
                     videographer: item.videographer || null,
+                    videographerName: item.videographer_name || null,
                     drone: showDrone ? (item.drone || null) : null,
+                    droneName: showDrone ? (item.drone_name || null) : null,
                     client: item.client,
                     date: item.date || '—',
                     status: item.status === 'Pending' ? 'New' : item.status || 'New',
@@ -177,7 +180,7 @@ export default function IncomingData() {
                                         {row.photographer ? (
                                             <div className="flex items-center gap-1.5">
                                                 <Camera size={12} className="text-blue-500 shrink-0" />
-                                                <span className="text-xs font-medium text-gray-700">{row.photographer}</span>
+                                                <span className="text-xs font-medium text-gray-700">{row.photographerName || row.photographer}</span>
                                             </div>
                                         ) : row.preProductionUploads?.length ? (
                                             <div className="flex max-w-[180px] flex-wrap gap-1">
@@ -195,7 +198,7 @@ export default function IncomingData() {
                                         {row.videographer ? (
                                             <div className="flex items-center gap-1.5">
                                                 <Video size={12} className="text-pink-500 shrink-0" />
-                                                <span className="text-xs font-medium text-gray-700">{row.videographer}</span>
+                                                <span className="text-xs font-medium text-gray-700">{row.videographerName || row.videographer}</span>
                                             </div>
                                         ) : (
                                             <span className="text-xs text-gray-400">—</span>
@@ -206,7 +209,7 @@ export default function IncomingData() {
                                             {row.drone ? (
                                                 <div className="flex items-center gap-1.5">
                                                     <Camera size={12} className="text-teal-500 shrink-0" />
-                                                    <span className="text-xs font-medium text-gray-700">{row.drone}</span>
+                                                    <span className="text-xs font-medium text-gray-700">{row.droneName || row.drone}</span>
                                                 </div>
                                             ) : (
                                                 <span className="text-xs text-gray-400">—</span>

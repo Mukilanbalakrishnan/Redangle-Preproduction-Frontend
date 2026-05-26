@@ -161,7 +161,7 @@ export default function NotificationsPage({ role }: NotificationsPageProps) {
     const unreadFiltered = filtered.filter(n => !n.is_read).length;
 
     return (
-        <div className="max-w-4xl space-y-5 animate-in fade-in zoom-in-95 duration-300">
+        <div className="max-w-7xl space-y-5 animate-in fade-in zoom-in-95 duration-300">
             {/* Page header */}
             <div className="flex items-center justify-between pb-4 border-b border-gray-100">
                 <div>
