@@ -15,6 +15,7 @@ interface WorkItem {
     deadline: string
     created_at?: string
     upload_link?: string
+    task_key?: string
 }
 
 const getPriorityStyle = (p: string) => {
@@ -54,10 +55,11 @@ export default function DroneWorks() {
             .then(r => r.json())
             .then(result => {
                 if (result.success) {
-                    setWorks(sortNewestFirst((result.data || []).filter((item: WorkItem) => {
-                        const tName = String(item.task_name || item.name || '').toLowerCase();
-                        return tName.includes('drone') || tName.includes('additional staff') || tName.includes('additional-staff');
-                    })))
+                    const filtered = (result.data || []).filter((w: WorkItem) => {
+                        const key = w.task_key || '';
+                        return key === 'drone-coverage' || key === 'secondary-drone-coverage' || key.startsWith('additional-staff');
+                    });
+                    setWorks(sortNewestFirst(filtered))
                 }
             })
             .catch(console.error)

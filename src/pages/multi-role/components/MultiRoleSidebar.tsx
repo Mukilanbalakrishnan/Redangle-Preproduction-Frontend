@@ -207,51 +207,40 @@ export default function MultiRoleSidebar() {
                     </>
                 )}
 
-                {/* Accordion sections */}
+                {/* Role sections */}
                 {filteredSections.map((section) => {
-                    const isOpen = expanded[section.id]
                     const SectionIcon = section.icon
                     const sectionActive = section.items.some(i => location.pathname.startsWith(i.to))
 
                     return (
-                        <div key={section.id} className="mb-1">
-                            <button
-                                onClick={() => toggle(section.id)}
-                                className={`flex items-center justify-between w-full px-4 py-3 rounded-xl text-sm font-semibold transition-all ${sectionActive ? 'text-gray-900' : 'text-gray-600 hover:text-gray-900'
-                                    }`}
-                            >
+                        <div key={section.id} className="mb-4">
+                            <div className={`flex items-center w-full px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider mb-2 ${sectionActive ? 'text-gray-900' : 'text-gray-500'}`}>
                                 <div className="flex items-center gap-3">
-                                    <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                                    <div className="w-6 h-6 rounded-lg flex items-center justify-center"
                                         style={{ backgroundColor: `${section.color}15` }}>
-                                        <SectionIcon size={15} style={{ color: section.color }} />
+                                        <SectionIcon size={13} style={{ color: section.color }} />
                                     </div>
                                     {section.label}
                                 </div>
-                                <ChevronDown
-                                    size={14}
-                                    className={`text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-                                />
-                            </button>
+                            </div>
 
-                            {isOpen && (
-                                <div className="ml-6 pl-4 border-l-2 border-purple-100 space-y-0.5 pb-1">
-                                    {section.items.map(({ to, icon: Icon, label }) => (
-                                        <NavLink
-                                            key={to}
-                                            to={to}
-                                            className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all"
-                                            style={({ isActive }) => ({
-                                                color: isActive ? '#7c3aed' : '#6B7280',
-                                                background: isActive ? '#fff' : undefined,
-                                                boxShadow: isActive ? '0 1px 2px rgba(0,0,0,0.04)' : undefined,
-                                            })}
-                                        >
-                                            <Icon size={14} />
-                                            {label}
-                                        </NavLink>
-                                    ))}
-                                </div>
-                            )}
+                            <div className="ml-6 pl-4 border-l-2 border-purple-100 space-y-0.5 pb-1">
+                                {section.items.map(({ to, icon: Icon, label }) => (
+                                    <NavLink
+                                        key={to}
+                                        to={to}
+                                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all"
+                                        style={({ isActive }) => ({
+                                            color: isActive ? '#7c3aed' : '#6B7280',
+                                            background: isActive ? '#fff' : undefined,
+                                            boxShadow: isActive ? '0 1px 2px rgba(0,0,0,0.04)' : undefined,
+                                        })}
+                                    >
+                                        <Icon size={14} />
+                                        {label}
+                                    </NavLink>
+                                ))}
+                            </div>
                         </div>
                     )
                 })}

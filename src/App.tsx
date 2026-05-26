@@ -103,6 +103,7 @@ import Invoice from './pages/client/pages/Invoice'
 import ClientNotifications from './pages/client/pages/Notifications'
 
 import AssignEditor from './ClientFlow/AssignEditor'
+import AssignEditingTeamPage from './ClientFlow/AssignEditingTeamPage'
 import UnifiedDashboard from './pages/dashboard/UnifiedDashboard'
 
 import MultiRoleLayout from './pages/multi-role/MultiRoleLayout'
@@ -339,6 +340,7 @@ function App() {
             <Route path="leave-request" element={<Navigate to="/pre-production-crm/attendance?tab=leave-request" replace />} />
             <Route path="leave-management" element={<Navigate to="/pre-production-crm/attendance?tab=leave-management" replace />} />
             <Route path="assign-editor" element={<AssignEditor />} />
+            <Route path="assign-team" element={<AssignEditingTeamPage />} />
             <Route path="notifications" element={<CrmNotifications />} />
             <Route path="*" element={<Navigate to="/pre-production-crm/dashboard" replace />} />
           </Route>
@@ -375,6 +377,7 @@ function App() {
             <Route path="leave-request" element={<Navigate to="/post-production-crm/attendance?tab=leave-request" replace />} />
             <Route path="leave-management" element={<Navigate to="/post-production-crm/attendance?tab=leave-management" replace />} />
             <Route path="assign-editor" element={<AssignEditor />} />
+            <Route path="assign-team" element={<AssignEditingTeamPage />} />
             <Route path="notifications" element={<CrmNotifications />} />
             <Route path="*" element={<Navigate to="/post-production-crm/dashboard" replace />} />
           </Route>

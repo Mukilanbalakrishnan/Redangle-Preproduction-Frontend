@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-    AlertTriangle,
     ArrowLeft,
     Calendar,
     Camera,
@@ -14,14 +13,23 @@ import {
     Mail,
     MapPin,
     Phone,
-    RotateCcw,
     Search,
     ShieldCheck,
     Video,
 } from 'lucide-react'
 import { matchesDataManagerStage, useDataManagerStageScope } from '../utils/stageScope'
+import { ShootDetailsViewer } from './RawDataView'
 
 const API_URL = import.meta.env.VITE_API_URL
+
+const safeParseJSON = (str: string | null) => {
+    if (!str) return null
+    try {
+        return JSON.parse(str)
+    } catch {
+        return null
+    }
+}
 
 const initialChecks = [
     { id: 1, label: 'All files received and accessible', group: 'Access' },
@@ -209,7 +217,7 @@ export default function Verification() {
                             rawData: item,
                         }
                     })
-                    .filter((item: any) => item.status === 'Pending_Verification')
+                    .filter((item: any) => ['Pending_Verification', 'Verified', 'crm_verified'].includes(item.status))
 
                 setTableData(mappedData)
             }
@@ -236,7 +244,8 @@ export default function Verification() {
     const rejectReady = remarks.trim().length >= 10 || selectedIssues.length > 0
 
     const stats = useMemo(() => ({
-        pending: tableData.length,
+        pending: tableData.filter(i => i.status === 'Pending_Verification').length,
+        completed: tableData.filter(i => i.status === 'Verified' || i.status === 'crm_verified').length,
         uploads: tableData.reduce((sum, item) => sum + item.uploadCount, 0),
         images: tableData.reduce((sum, item) => sum + item.imageCount, 0),
         videos: tableData.reduce((sum, item) => sum + item.videoCount, 0),
@@ -246,6 +255,17 @@ export default function Verification() {
         setChecks(initialChecks)
         setRemarks('')
         setSelectedIssues([])
+    }
+
+    const loadDetailState = (row: any) => {
+        const draft = row?.rawData?.verification_draft
+        if (draft) {
+            setChecks(draft.checks || initialChecks)
+            setRemarks(draft.remarks || '')
+            setSelectedIssues(draft.selectedIssues || [])
+        } else {
+            resetDetailState()
+        }
     }
 
     const toggleCheck = (id: number) => {
@@ -279,30 +299,25 @@ export default function Verification() {
         }
     }
 
-    const handleReject = async () => {
+    const handleSaveDraft = async () => {
         if (!selectedData) return
-        if (!rejectReady) {
-            alert('Add a remark or select at least one issue before requesting rework.')
-            return
-        }
         setSubmittingData(true)
         try {
-            const res = await fetch(`${API_URL}/data-manager/${selectedData.rawId}/request-reupload`, {
+            const draftData = { checks, remarks, selectedIssues }
+            const res = await fetch(`${API_URL}/data-manager/${selectedData.rawId}/verification-draft`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ remarks, issues: selectedIssues }),
+                body: JSON.stringify({ draft: draftData }),
             })
             const result = await res.json()
             if (result.success) {
-                resetDetailState()
-                setView('list')
-                setSelectedData(null)
+                alert('Draft saved successfully!')
                 fetchVerificationData()
             } else {
-                alert(result.message || 'Failed to reject data')
+                alert(result.message || 'Failed to save draft')
             }
         } catch (error) {
-            console.error('Error rejecting data:', error)
+            console.error('Error saving draft:', error)
             alert('An unexpected error occurred')
         } finally {
             setSubmittingData(false)
@@ -349,16 +364,17 @@ export default function Verification() {
                         <h1 className="text-xl font-bold text-gray-900">{stageScope.label} Verification Tasks</h1>
                         <p className="mt-1 text-sm text-gray-500">Review uploaded files, run QC checks, and approve or request rework.</p>
                     </div>
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-5 gap-3">
                         {[
                             ['Pending', stats.pending],
+                            ['Completed', stats.completed],
                             ['Uploads', stats.uploads],
                             ['Images', stats.images],
                             ['Videos', stats.videos],
                         ].map(([label, value]) => (
                             <div key={label} className="rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
                                 <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">{label}</p>
-                                <p className="mt-1 text-lg font-bold text-gray-900">{value}</p>
+                                <p className="mt-1 text-xl font-black text-gray-900">{value}</p>
                             </div>
                         ))}
                     </div>
@@ -416,13 +432,13 @@ export default function Verification() {
                                         <td className="px-5 py-4">
                                             <button
                                                 onClick={() => {
-                                                    resetDetailState()
+                                                    loadDetailState(row)
                                                     setSelectedData(row)
                                                     setView('details')
                                                 }}
                                                 className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 px-4 py-2 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100"
                                             >
-                                                <Eye size={14} /> Start Verification
+                                                <Eye size={14} /> {['Verified', 'crm_verified'].includes(row.status) ? 'View QC' : 'Start Verification'}
                                             </button>
                                         </td>
                                     </tr>
@@ -549,9 +565,19 @@ export default function Verification() {
                                                     {hardDisk ? `Disk date ${formatDate(group.hardDiskDate)}` : group.deliveryMethod || 'Drive link'}
                                                 </span>
                                             </div>
-                                            {group.notes && (
-                                                <p className="mt-3 rounded-lg bg-white px-3 py-2 text-xs font-medium text-gray-600">{group.notes}</p>
-                                            )}
+                                            {(() => {
+                                                const parsedNotes = safeParseJSON(group.notes)
+                                                if (parsedNotes && typeof parsedNotes === 'object') {
+                                                    return (
+                                                        <div className="mt-4">
+                                                            <ShootDetailsViewer details={parsedNotes} clientName={selectedData?.client} />
+                                                        </div>
+                                                    )
+                                                }
+                                                return group.notes ? (
+                                                    <p className="mt-3 rounded-lg bg-white px-3 py-2 text-xs font-medium text-gray-600">{group.notes}</p>
+                                                ) : null
+                                            })()}
                                             {hardDisk && (
                                                 <p className={`mt-3 text-xs font-bold ${group.hardDiskReceived ? 'text-emerald-600' : 'text-amber-600'}`}>
                                                     {group.hardDiskReceived ? 'Hard disk received' : 'Hard disk receipt pending'}
@@ -636,13 +662,6 @@ export default function Verification() {
                                 ))}
                             </div>
                         </div>
-
-                        <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4">
-                            <p className="flex gap-2 text-xs font-semibold text-amber-700">
-                                <AlertTriangle size={15} className="shrink-0" />
-                                Rejecting requires at least one issue tag or a clear remark so the upload team knows what to fix.
-                            </p>
-                        </div>
                     </section>
 
                     <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
@@ -653,24 +672,24 @@ export default function Verification() {
                                 <p className="mt-1 text-sm font-bold text-gray-900">{completedChecks === totalChecks ? 'Ready to approve' : `${totalChecks - completedChecks} checks remaining`}</p>
                             </div>
                             <div className="rounded-xl bg-gray-50 p-4">
-                                <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Rework Notes</p>
-                                <p className="mt-1 text-sm font-bold text-gray-900">{rejectReady ? 'Ready to request rework' : 'Add issue details first'}</p>
+                                <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Draft Notes</p>
+                                <p className="mt-1 text-sm font-bold text-gray-900">{rejectReady ? 'Issues and remarks noted' : 'No issues noted'}</p>
                             </div>
                         </div>
                         <div className="grid gap-3">
                             <button
                                 onClick={handleApprove}
-                                disabled={completedChecks !== totalChecks || submittingData}
+                                disabled={completedChecks !== totalChecks || submittingData || ['Verified', 'crm_verified'].includes(selectedData?.status)}
                                 className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                                <CheckCircle2 size={16} /> {submittingData ? 'Submitting...' : 'Approve Data'}
+                                <CheckCircle2 size={16} /> {['Verified', 'crm_verified'].includes(selectedData?.status) ? 'Already Approved' : submittingData ? 'Submitting...' : 'Approve Data'}
                             </button>
                             <button
-                                onClick={handleReject}
-                                disabled={submittingData || !rejectReady}
-                                className="flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-white py-3 text-sm font-bold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                onClick={handleSaveDraft}
+                                disabled={submittingData || ['Verified', 'crm_verified'].includes(selectedData?.status)}
+                                className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-3 text-sm font-bold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                                <RotateCcw size={16} /> Reject & Request Rework
+                                <ClipboardCheck size={16} /> {submittingData ? 'Saving...' : 'Save Draft'}
                             </button>
                         </div>
                     </section>
