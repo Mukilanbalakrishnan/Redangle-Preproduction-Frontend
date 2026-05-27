@@ -399,16 +399,14 @@ export default function RawData({ workflowPhase = 'all', title, description }: R
                         )}
 
 
-                        {/* Secondary: View (non-pre-production only) */}
-                        {workflowPhase !== 'pre_production' && (
-                          <button
-                            onClick={() => { setSelectedData(row); setView('view') }}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
-                            title="View details"
-                          >
-                            <Eye size={14} />
-                          </button>
-                        )}
+                        {/* Secondary: View */}
+                        <button
+                          onClick={() => { setSelectedData(row); setView('view') }}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
+                          title="View details"
+                        >
+                          <Eye size={14} />
+                        </button>
 
                         {/* Secondary: Edit */}
                         <button

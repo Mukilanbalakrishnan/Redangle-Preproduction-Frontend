@@ -3,48 +3,10 @@ import axios from 'axios';
 import { Calendar, Video, Edit3, Users, Bell, Camera, Image, Film } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
-import { EmployeePicker, type Employee } from './assignTeamShared';
+import { EmployeePicker, AdditionalStaffPicker, type Employee } from './assignTeamShared';
 import { getCurrentUserDisplayName, getCurrentUserRole } from '../utils/currentUser';
 
-function TagInput({ label, icon, tags, onAdd, onRemove }: {
-    label: string, icon: React.ReactNode, tags: string[], onAdd: (v: string) => void, onRemove: (v: string) => void
-}) {
-    const [input, setInput] = useState("");
-    const handleAdd = () => {
-        const t = input.trim();
-        if (t && !tags.includes(t)) { onAdd(t); setInput(""); }
-    };
-    return (
-        <div className="rounded-2xl p-6" style={{ border: '1px solid #E5E7EB' }}>
-            <div className="flex items-center gap-2 mb-5">{icon}<h3 className="text-sm font-bold text-gray-900">{label}</h3></div>
-            <div className="flex gap-2 mb-3">
-                <input
-                    type="text"
-                    value={input}
-                    onChange={e => setInput(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleAdd()}
-                    placeholder={`Type ${label.toLowerCase()} name...`}
-                    className="flex-1 text-sm px-3 py-2 rounded-xl border outline-none focus:border-purple-400"
-                />
-                <button
-                    type="button"
-                    onClick={handleAdd}
-                    className="px-4 py-2 rounded-xl text-sm font-semibold bg-purple-600 text-white hover:bg-purple-700"
-                >Add</button>
-            </div>
-            {tags.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                    {tags.map(tag => (
-                        <span key={tag} className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium" style={{ background: '#EDE9FE', color: '#5B21B6' }}>
-                            {tag}
-                            <button type="button" onClick={() => onRemove(tag)} className="hover:text-red-500 font-bold">×</button>
-                        </span>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-}
+
 
 type FieldKey =
     | 'saveTheDate' | 'saveTheVideo' | 'retouching'
@@ -234,12 +196,25 @@ export default function AssignEditor() {
             </div>
 
             <div className="grid grid-cols-2 gap-6 mb-8">
-                <TagInput
-                    label="Assistants (Editors)"
-                    icon={<Users size={18} className="text-gray-500" />}
+                <AdditionalStaffPicker
                     tags={assistants}
+                    employees={employees as Employee[]}
+                    availableRoles={isPostProduction
+                        ? [
+                            { key: 'traditional_video', label: 'Traditional Video' },
+                            { key: 'retouch', label: 'Retouch' },
+                            { key: 'album_design', label: 'Album Design' },
+                            { key: 'candid_video', label: 'Candid Video' },
+                        ]
+                        : [
+                            { key: 'save_the_date', label: 'Save the Date' },
+                            { key: 'save_the_video', label: 'Save the Video' },
+                            { key: 'retouch', label: 'Retouch' },
+                        ]
+                    }
                     onAdd={t => setAssistants([...assistants, t])}
                     onRemove={t => setAssistants(assistants.filter(a => a !== t))}
+                    icon={<Users size={18} className="text-gray-500" />}
                 />
             </div>
 

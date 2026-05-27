@@ -91,32 +91,32 @@ const normalizeRoleKey = (role?: string) =>
 
 const getSubmissionState = (data: Partial<Lead> | any, role?: string) => {
     const normalizedRole = normalizeRoleKey(role)
-
     const hasAdminNotes = !!data?.admin_notes
 
     if (normalizedRole === 'save the date') {
-        const uploadLink = data?.save_the_date_drive_link || data?.upload_link || ''
-        const uploadNotes = data?.save_the_date_upload_notes || data?.upload_notes || ''
-        const status = data?.save_the_date_submission_status || data?.status || (uploadLink ? 'Submitted' : '')
+        const uploadLink = data?.save_the_date_drive_link || ''
+        const uploadNotes = data?.save_the_date_upload_notes || ''
+        const status = data?.save_the_date_submission_status || (uploadLink ? 'Submitted' : '')
         return { uploadLink, uploadNotes, status, isSubmitted: !hasAdminNotes && (status.toLowerCase() === 'submitted' || (!!uploadLink && status.toLowerCase() !== 'rework')) }
     }
 
     if (normalizedRole === 'retouch') {
-        const uploadLink = data?.retouch_drive_link || data?.upload_link || ''
-        const uploadNotes = data?.retouch_upload_notes || data?.upload_notes || ''
-        const status = data?.retouch_submission_status || data?.status || (uploadLink ? 'Submitted' : '')
+        const uploadLink = data?.retouch_drive_link || ''
+        const uploadNotes = data?.retouch_upload_notes || ''
+        const status = data?.retouch_submission_status || (uploadLink ? 'Submitted' : '')
         return { uploadLink, uploadNotes, status, isSubmitted: !hasAdminNotes && (status.toLowerCase() === 'submitted' || (!!uploadLink && status.toLowerCase() !== 'rework')) }
     }
 
     if (normalizedRole === 'save the video') {
-        const uploadLink = data?.save_the_video_drive_link || data?.upload_link || ''
-        const uploadNotes = data?.save_the_video_upload_notes || data?.upload_notes || ''
-        const status = data?.save_the_video_submission_status || data?.status || (uploadLink ? 'Submitted' : '')
+        const uploadLink = data?.save_the_video_drive_link || ''
+        const uploadNotes = data?.save_the_video_upload_notes || ''
+        const status = data?.save_the_video_submission_status || (uploadLink ? 'Submitted' : '')
         return { uploadLink, uploadNotes, status, isSubmitted: !hasAdminNotes && (status.toLowerCase() === 'submitted' || (!!uploadLink && status.toLowerCase() !== 'rework')) }
     }
 
     const uploadLink = data?.upload_link || data?.drive_link || ''
     const uploadNotes = data?.upload_notes || ''
+    // Only fall back to overall status if we have an upload link, or if it's explicitly 'submitted'/'approved' etc.
     const status = data?.status || (uploadLink ? 'Submitted' : '')
     return { uploadLink, uploadNotes, status, isSubmitted: !hasAdminNotes && (status.toLowerCase() === 'submitted' || (!!uploadLink && status.toLowerCase() !== 'rework')) }
 }
