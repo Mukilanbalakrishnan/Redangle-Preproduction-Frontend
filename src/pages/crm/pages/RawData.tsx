@@ -126,7 +126,7 @@ export default function RawData({ workflowPhase = 'all', title, description }: R
         const mapped = res.data.data.map((item: any) => ({
           id: String(item.id),
           serialNumber: item.lead_serial_number || String(item.id),
-          employee: item.photographer ? item.photographer : (item.videographer ? item.videographer : (item.drone ? item.drone : 'Unknown')),
+          employee: item.photographer_name || item.photographer || item.videographer_name || item.videographer || item.drone_name || item.drone || 'Unknown',
           role: item.photographer && item.videographer && item.drone
             ? 'Photo, Video & Drone'
             : item.photographer && item.videographer ? 'Photo & Video'
@@ -369,15 +369,16 @@ export default function RawData({ workflowPhase = 'all', title, description }: R
                       <div className="flex justify-end items-center gap-1">
                         {row.statusMeta.crmVerified && (
                           <>
-                            <button
-                              onClick={() => { setSelectedData(row); setView('assignTeam'); }}
-                              className="p-2 rounded-lg text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 transition-all flex items-center gap-1 text-xs font-semibold mr-1"
-                              title="Assign Editors"
-                            >
-                              <Users size={15} />
-                              <span className="hidden xl:inline">Assign</span>
-                            </button>
-                            {!row.clientDeliveryStatus && (
+                            {row.clientDeliveryStatus ? (
+                              <button
+                                onClick={() => { setSelectedData(row); setView('assignTeam'); }}
+                                className="p-2 rounded-lg text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 transition-all flex items-center gap-1 text-xs font-semibold mr-1"
+                                title="Assign Editors"
+                              >
+                                <Users size={15} />
+                                <span className="hidden xl:inline">Assign</span>
+                              </button>
+                            ) : (
                               <button
                                 onClick={() => handleSendToClient(row)}
                                 disabled={sendingId === row.id}
