@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Upload, RotateCcw, Search, Eye, Plane, ArrowLeft, CheckCircle, User, CalendarDays, MapPin, Palette, Shirt, FileText } from 'lucide-react'
+import { Upload, RotateCcw, Search, Eye, Plane, ArrowLeft, CheckCircle, User, CalendarDays, MapPin, Palette, Shirt, FileText, UserPlus } from 'lucide-react'
 import axios from 'axios'
 
 const API_URL = import.meta.env.VITE_API_URL
@@ -110,6 +110,7 @@ export default function DroneAssignedClient() {
     const [creativeDetails, setCreativeDetails] = useState<CreativeDetails | null>(null)
     const [detailLoading, setDetailLoading] = useState(false)
     const [shootLocations, setShootLocations] = useState<any[]>([])
+    const [additionalStaff, setAdditionalStaff] = useState<string[]>([])
 
     const [driveLink, setDriveLink] = useState('')
     const [deliveryMethod, setDeliveryMethod] = useState<'drive_link' | 'hard_disk'>('drive_link')
@@ -220,6 +221,9 @@ export default function DroneAssignedClient() {
             const aData = assignRes.data?.data || assignRes.data
             if (aData) {
                 setShootLocations(aData.shoot_locations || [])
+                const rawStaff = aData.additional_staff || []
+                const parsed = typeof rawStaff === 'string' ? (() => { try { return JSON.parse(rawStaff) } catch { return [] } })() : rawStaff
+                setAdditionalStaff(Array.isArray(parsed) ? parsed : [])
             }
         } catch (err) { console.error("Assign team details fetch failed", err) }
 
@@ -256,7 +260,7 @@ export default function DroneAssignedClient() {
         setDriveLink(''); setCameraUsed(''); setNumVideos(''); setUploadNotes('')
         setDeliveryMethod('drive_link'); setHardDiskDeliveryDate('')
         setUploadSuccess(false);
-        setEventDetails(null); setCreativeDetails(null); setShootLocations([])
+        setEventDetails(null); setCreativeDetails(null); setShootLocations([]); setAdditionalStaff([])
         fetchClientDetails(lead.lead_id, lead.flow_stage, lead.task_name)
     }
 
@@ -604,6 +608,68 @@ export default function DroneAssignedClient() {
                                     )}
                                 </div>
                             ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Additional Staff / Freelancer Details */}
+                {additionalStaff && additionalStaff.filter((entry: string) => {
+                    if (!entry.includes('::')) return true;
+                    const role = entry.split('::')[1]?.toLowerCase() || '';
+                    return role.includes('drone') || role.includes('pilot');
+                }).length > 0 && (
+                    <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+                        <div className="flex items-center gap-2 mb-4">
+                            <UserPlus size={16} className="text-indigo-600" />
+                            <h3 className="text-sm font-bold text-gray-900">Freelancer / Additional Staff</h3>
+                            <span className="ml-auto text-xs font-semibold px-2 py-1 rounded-full bg-indigo-50 text-indigo-700">
+                                {additionalStaff.filter((entry: string) => {
+                                    if (!entry.includes('::')) return true;
+                                    const role = entry.split('::')[1]?.toLowerCase() || '';
+                                    return role.includes('drone') || role.includes('pilot');
+                                }).length} member{additionalStaff.filter((entry: string) => {
+                                    if (!entry.includes('::')) return true;
+                                    const role = entry.split('::')[1]?.toLowerCase() || '';
+                                    return role.includes('drone') || role.includes('pilot');
+                                }).length > 1 ? 's' : ''}
+                            </span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {additionalStaff.filter((entry: string) => {
+                                if (!entry.includes('::')) return true;
+                                const role = entry.split('::')[1]?.toLowerCase() || '';
+                                return role.includes('drone') || role.includes('pilot');
+                            }).map((entry: string, idx: number) => {
+                                let name = entry
+                                let role = ''
+                                let phone = ''
+                                if (entry.includes('::')) {
+                                    const [empId, r] = entry.split('::')
+                                    role = r || ''
+                                    if (empId.startsWith('FREELANCE_')) {
+                                        const parts = empId.split('_')
+                                        name = parts[1] || 'Freelancer'
+                                        phone = parts[2] || ''
+                                    } else {
+                                        name = empId
+                                    }
+                                }
+                                return (
+                                    <div key={idx} className="p-4 rounded-xl flex items-center gap-3" style={{ background: '#F5F3FF', border: '1px solid #E0E7FF' }}>
+                                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-bold" style={{ background: '#E0E7FF', color: '#4338CA' }}>
+                                            {name.split(' ').filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase()).join('') || 'FL'}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-sm font-semibold text-gray-900">{name}{phone ? ` (${phone})` : ''}</p>
+                                            {role && (
+                                                <span className="inline-flex mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 text-indigo-700">
+                                                    {role}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                )
+                            })}
                         </div>
                     </div>
                 )}

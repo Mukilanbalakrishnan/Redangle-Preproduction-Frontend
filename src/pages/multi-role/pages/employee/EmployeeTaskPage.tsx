@@ -92,31 +92,33 @@ const normalizeRoleKey = (role?: string) =>
 const getSubmissionState = (data: Partial<Lead> | any, role?: string) => {
     const normalizedRole = normalizeRoleKey(role)
 
+    const hasAdminNotes = !!data?.admin_notes
+
     if (normalizedRole === 'save the date') {
         const uploadLink = data?.save_the_date_drive_link || data?.upload_link || ''
         const uploadNotes = data?.save_the_date_upload_notes || data?.upload_notes || ''
         const status = data?.save_the_date_submission_status || data?.status || (uploadLink ? 'Submitted' : '')
-        return { uploadLink, uploadNotes, status, isSubmitted: status.toLowerCase() === 'submitted' || !!uploadLink }
+        return { uploadLink, uploadNotes, status, isSubmitted: !hasAdminNotes && (status.toLowerCase() === 'submitted' || (!!uploadLink && status.toLowerCase() !== 'rework')) }
     }
 
     if (normalizedRole === 'retouch') {
         const uploadLink = data?.retouch_drive_link || data?.upload_link || ''
         const uploadNotes = data?.retouch_upload_notes || data?.upload_notes || ''
         const status = data?.retouch_submission_status || data?.status || (uploadLink ? 'Submitted' : '')
-        return { uploadLink, uploadNotes, status, isSubmitted: status.toLowerCase() === 'submitted' || !!uploadLink }
+        return { uploadLink, uploadNotes, status, isSubmitted: !hasAdminNotes && (status.toLowerCase() === 'submitted' || (!!uploadLink && status.toLowerCase() !== 'rework')) }
     }
 
     if (normalizedRole === 'save the video') {
         const uploadLink = data?.save_the_video_drive_link || data?.upload_link || ''
         const uploadNotes = data?.save_the_video_upload_notes || data?.upload_notes || ''
         const status = data?.save_the_video_submission_status || data?.status || (uploadLink ? 'Submitted' : '')
-        return { uploadLink, uploadNotes, status, isSubmitted: status.toLowerCase() === 'submitted' || !!uploadLink }
+        return { uploadLink, uploadNotes, status, isSubmitted: !hasAdminNotes && (status.toLowerCase() === 'submitted' || (!!uploadLink && status.toLowerCase() !== 'rework')) }
     }
 
     const uploadLink = data?.upload_link || data?.drive_link || ''
     const uploadNotes = data?.upload_notes || ''
     const status = data?.status || (uploadLink ? 'Submitted' : '')
-    return { uploadLink, uploadNotes, status, isSubmitted: status.toLowerCase() === 'submitted' || !!uploadLink }
+    return { uploadLink, uploadNotes, status, isSubmitted: !hasAdminNotes && (status.toLowerCase() === 'submitted' || (!!uploadLink && status.toLowerCase() !== 'rework')) }
 }
 
 /* ───── Component ───── */
@@ -138,6 +140,9 @@ export default function EmployeeTaskPage({ title, icon, filterType }: EmployeeTa
     const [driveLink, setDriveLink] = useState('')
     const [uploadNotes, setUploadNotes] = useState('')
     const [uploadSuccess, setUploadSuccess] = useState(false)
+
+    // Server File Path
+    const [serverFilePath, setServerFilePath] = useState('')
 
     /* ── Data Fetch ── */
     useEffect(() => {
@@ -260,6 +265,22 @@ export default function EmployeeTaskPage({ title, icon, filterType }: EmployeeTa
             }
         } catch (err) { console.error("Assignment status fetch failed", err) }
 
+        try {
+            const incomingRes = await axios.get(`${API_URL}/data-manager/incoming`)
+            if (incomingRes.data?.success && incomingRes.data.data) {
+                const match = incomingRes.data.data.find((item: any) => 
+                    String(item.lead_serial_number) === String(leadId) || 
+                    String(item.id) === String(leadId) || 
+                    String(item.external_id) === String(leadId)
+                )
+                if (match) {
+                    setServerFilePath(match.file_path || '')
+                } else {
+                    setServerFilePath('')
+                }
+            }
+        } catch (err) { console.error("Server path fetch failed", err) }
+
         setDetailLoading(false)
     }
 
@@ -272,6 +293,7 @@ export default function EmployeeTaskPage({ title, icon, filterType }: EmployeeTa
         setDriveLink(submission.uploadLink)
         setUploadNotes(submission.uploadNotes)
         setUploadSuccess(submission.isSubmitted)
+        setServerFilePath('')
         setEventDetails(null)
         setCreativeDetails(null)
         fetchClientDetails(lead.lead_id, lead.task_name)
@@ -324,7 +346,8 @@ export default function EmployeeTaskPage({ title, icon, filterType }: EmployeeTa
                 ...selectedLead,
                 upload_link: submission.uploadLink || driveLink,
                 upload_notes: submission.uploadNotes || uploadNotes,
-                status: submission.status || 'Submitted'
+                status: submission.status || 'Submitted',
+                admin_notes: ''
             }
 
             setUploadSuccess(true)
@@ -543,107 +566,33 @@ export default function EmployeeTaskPage({ title, icon, filterType }: EmployeeTa
                     </div>
                 )}
 
-                {/* Creative Confirmation - Costume & Concept */}
-                {creativeDetails && (
-                    <div className="grid grid-cols-2 gap-6">
-                        {/* Costume Details */}
-                        <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
-                            <div className="flex items-center gap-2 mb-4">
-                                <Shirt size={16} className="text-gray-500" />
-                                <h3 className="text-sm font-bold text-gray-900">Costume Details</h3>
-                            </div>
-                            <div className="space-y-3">
-                                <div className="bg-gray-50 rounded-lg p-3">
-                                    <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Costume Type</p>
-                                    <p className="text-sm font-semibold text-gray-900">{creativeDetails.costume_type || '—'}</p>
-                                </div>
-                                {creativeDetails.color_preferences.length > 0 && (
-                                    <div>
-                                        <p className="text-[10px] text-gray-400 uppercase font-bold mb-2">Color Preferences</p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {creativeDetails.color_preferences.map((c, i) => (
-                                                <span key={i} className="px-3 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-100">{c}</span>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                                {creativeDetails.costume_requirements && (
-                                    <div className="bg-gray-50 rounded-lg p-3">
-                                        <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Special Requirements</p>
-                                        <p className="text-sm text-gray-700">{creativeDetails.costume_requirements}</p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Concept Details */}
-                        <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
-                            <div className="flex items-center gap-2 mb-4">
-                                <Palette size={16} className="text-gray-500" />
-                                <h3 className="text-sm font-bold text-gray-900">Concept Details</h3>
-                                {creativeDetails.client_approved && (
-                                    <span className="ml-auto inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-50 text-green-700">
-                                        <CheckCircle size={10} /> Client Approved
-                                    </span>
-                                )}
-                            </div>
-                            <div className="space-y-3">
-                                <div className="bg-gray-50 rounded-lg p-3">
-                                    <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Event Theme</p>
-                                    <p className="text-sm font-semibold text-gray-900">{creativeDetails.event_theme || '—'}</p>
-                                </div>
-                                {creativeDetails.mood_description && (
-                                    <div className="bg-gray-50 rounded-lg p-3">
-                                        <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Mood Description</p>
-                                        <p className="text-sm text-gray-700">{creativeDetails.mood_description}</p>
-                                    </div>
-                                )}
-                                {creativeDetails.reference_images && creativeDetails.reference_images.length > 0 && (
-                                    <div>
-                                        <p className="text-[10px] text-gray-400 uppercase font-bold mb-2">Reference Images</p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {creativeDetails.reference_images.map((img, i) => (
-                                                <img key={i} src={`${API_URL?.replace('/api', '')}/uploads/${img}`} alt={`ref-${i}`}
-                                                    className="w-20 h-20 object-cover rounded-lg border border-gray-200" />
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
+                {/* Nash Server Path */}
+                <div className="bg-white rounded-xl border border-indigo-100 p-6 shadow-sm">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Briefcase size={16} className="text-indigo-600" />
+                        <h3 className="text-sm font-bold text-indigo-900 uppercase tracking-wider">Nash Server Path</h3>
+                    </div>
+                    <div className="bg-indigo-50/50 rounded-lg p-4 border border-indigo-100">
+                        <p className="text-[10px] text-indigo-400 uppercase font-bold mb-2">Production Server File Path</p>
+                        <div className="flex items-center gap-3 bg-white border border-indigo-200 rounded-lg px-4 py-3">
+                            {serverFilePath ? (
+                                <>
+                                    <span className="text-sm font-medium text-indigo-900 break-all">{serverFilePath}</span>
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(serverFilePath)
+                                        }}
+                                        className="ml-auto text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-md transition-colors whitespace-nowrap"
+                                    >
+                                        Copy Path
+                                    </button>
+                                </>
+                            ) : (
+                                <span className="text-sm font-medium text-gray-400 italic">No path specified</span>
+                            )}
                         </div>
                     </div>
-                )}
-
-                {/* Location Details */}
-                {creativeDetails && (creativeDetails.location_name || creativeDetails.location_type) && (
-                    <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
-                        <div className="flex items-center gap-2 mb-4">
-                            <MapPin size={16} className="text-gray-500" />
-                            <h3 className="text-sm font-bold text-gray-900">Location Details</h3>
-                        </div>
-                        <div className="grid grid-cols-3 gap-4">
-                            <div className="bg-gray-50 rounded-lg p-3">
-                                <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Location Name</p>
-                                <p className="text-sm font-semibold text-gray-900">{creativeDetails.location_name || '—'}</p>
-                            </div>
-                            <div className="bg-gray-50 rounded-lg p-3">
-                                <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Location Type</p>
-                                <p className="text-sm font-semibold text-gray-900">{creativeDetails.location_type || '—'}</p>
-                            </div>
-                            <div className="bg-gray-50 rounded-lg p-3">
-                                <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Google Map</p>
-                                {creativeDetails.google_map_link ? (
-                                    <a href={creativeDetails.google_map_link} target="_blank" rel="noreferrer"
-                                        className="text-sm font-semibold text-blue-600 hover:underline truncate block">
-                                        View on Map ↗
-                                    </a>
-                                ) : (
-                                    <p className="text-sm font-semibold text-gray-900">—</p>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )}
+                </div>
             </div>
         )
     }
@@ -740,20 +689,10 @@ export default function EmployeeTaskPage({ title, icon, filterType }: EmployeeTa
                     )}
                 </div>
 
-                <h3 className="text-sm font-bold text-gray-900 mb-3">Re-submit your work</h3>
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">Updated Drive Link *</label>
-                        <input
-                            value={driveLink} onChange={e => setDriveLink(e.target.value)}
-                            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-100"
-                            placeholder="https://drive.google.com/..."
-                        />
-                    </div>
+                <div className="mt-4 flex">
                     <button
-                        onClick={handleSubmitWork}
-                        disabled={!driveLink}
-                        className="px-6 py-2.5 bg-red-600 text-white text-sm font-semibold rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => setActiveTab('submit-work')}
+                        className="px-6 py-2.5 bg-red-600 text-white text-sm font-semibold rounded-xl hover:bg-red-700 transition-colors"
                     >
                         Re-submit Work
                     </button>
@@ -846,13 +785,16 @@ export default function EmployeeTaskPage({ title, icon, filterType }: EmployeeTa
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
-                                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id
+                                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all relative ${activeTab === tab.id
                                             ? 'bg-white text-amber-700 shadow-sm'
                                             : 'text-gray-600 hover:text-gray-900'
                                         }`}
                                 >
                                     <Icon size={14} />
                                     {tab.label}
+                                    {tab.id === 'rework' && (selectedLead.admin_notes || selectedLead.status?.toLowerCase() === 'rework') && (
+                                        <div className="w-2 h-2 rounded-full bg-red-500 ml-1" />
+                                    )}
                                 </button>
                             )
                         })}

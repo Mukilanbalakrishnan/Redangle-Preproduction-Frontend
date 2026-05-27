@@ -178,6 +178,47 @@ export default function RawDataView({ onBack, data, apiBasePath = '/data-manager
     const photographer = data.photographerName || data.photographer || rawData.photographer_name || rawData.photographer || null
     const videographer = data.videographerName || data.videographer || rawData.videographer_name || rawData.videographer || null
     const drone = isEventPhase ? (data.droneName || data.drone || rawData.drone_name || rawData.drone || null) : null
+    
+    const rawStaff = rawData.additional_staff || data.additional_staff || rawData.event_additional_staff || data.event_additional_staff || []
+    const parsedStaff = typeof rawStaff === 'string' ? (() => { try { return JSON.parse(rawStaff) } catch { return [] } })() : rawStaff
+    const additionalStaff = Array.isArray(parsedStaff) ? parsedStaff : []
+
+    const parseFreelancer = (entry: string) => {
+        let displayName = entry;
+        let phone = '';
+        if (entry.includes('::')) {
+            const rawNamePart = entry.split('::')[0];
+            if (rawNamePart.startsWith('FREELANCE_')) {
+                const withoutPrefix = rawNamePart.replace('FREELANCE_', '');
+                const parts = withoutPrefix.split('_');
+                if (parts.length > 1 && /^\d+$/.test(parts[parts.length - 1])) {
+                    phone = parts.pop() || '';
+                }
+                displayName = parts.join(' ');
+            } else {
+                displayName = rawNamePart;
+            }
+        }
+        return { displayName, phone };
+    };
+
+    const photographerStaff = additionalStaff.filter((entry: string) => {
+        if (!entry.includes('::')) return true;
+        const role = entry.split('::')[1]?.toLowerCase() || '';
+        return role.includes('photograph') || role.includes('photo');
+    })
+
+    const videographerStaff = additionalStaff.filter((entry: string) => {
+        if (!entry.includes('::')) return true;
+        const role = entry.split('::')[1]?.toLowerCase() || '';
+        return role.includes('videograph') || role.includes('video') || role.includes('cinematograph');
+    })
+
+    const droneStaff = additionalStaff.filter((entry: string) => {
+        if (!entry.includes('::')) return true;
+        const role = entry.split('::')[1]?.toLowerCase() || '';
+        return role.includes('drone') || role.includes('pilot');
+    })
     const numImages = data.numImages ?? rawData.num_images ?? 0
     const numVideos = data.numVideos ?? rawData.num_videos ?? 0
     const photoDrive = data.drive_link ?? rawData.drive_link ?? null
@@ -449,14 +490,41 @@ export default function RawDataView({ onBack, data, apiBasePath = '/data-manager
 
                     <div className="space-y-6 flex-grow">
                         {/* Team Member */}
-                        <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-blue-600 shadow-sm border border-gray-200">
-                                <User size={18} />
+                        <div className="flex flex-col gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-blue-600 shadow-sm border border-gray-200 shrink-0">
+                                    <User size={18} />
+                                </div>
+                                <div>
+                                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Assigned Photographer</div>
+                                    <div className="text-sm font-bold text-gray-900">{photographer || 'Unassigned'}</div>
+                                </div>
                             </div>
-                            <div>
-                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Assigned Photographer</div>
-                                <div className="text-sm font-bold text-gray-900">{photographer || 'Unassigned'}</div>
-                            </div>
+                            
+                            {photographerStaff.length > 0 && (
+                                <div className="mt-2 pt-2 border-t border-gray-200">
+                                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Freelancer</div>
+                                    <div className="flex flex-col gap-2">
+                                        {photographerStaff.map((entry: string, i: number) => {
+                                            const { displayName, phone } = parseFreelancer(entry);
+                                            return (
+                                                <div key={i} className="flex items-center justify-between p-2.5 bg-blue-50 rounded-lg border border-blue-100/60">
+                                                    <div>
+                                                        <div className="text-[9px] font-bold text-blue-400 uppercase tracking-wider mb-0.5">Name</div>
+                                                        <div className="text-xs font-bold text-blue-900 capitalize leading-none">{displayName}</div>
+                                                    </div>
+                                                    {phone && (
+                                                        <div className="text-right">
+                                                            <div className="text-[9px] font-bold text-blue-400 uppercase tracking-wider mb-0.5">Mobile Number</div>
+                                                            <div className="text-xs font-bold text-blue-900 leading-none">{phone}</div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Submitted Details from JSON */}
@@ -537,14 +605,41 @@ export default function RawDataView({ onBack, data, apiBasePath = '/data-manager
 
                     <div className="space-y-6 flex-grow">
                         {/* Team Member */}
-                        <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-pink-600 shadow-sm border border-gray-200">
-                                <User size={18} />
+                        <div className="flex flex-col gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-pink-600 shadow-sm border border-gray-200 shrink-0">
+                                    <User size={18} />
+                                </div>
+                                <div>
+                                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Assigned Videographer</div>
+                                    <div className="text-sm font-bold text-gray-900">{videographer || 'Unassigned'}</div>
+                                </div>
                             </div>
-                            <div>
-                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Assigned Videographer</div>
-                                <div className="text-sm font-bold text-gray-900">{videographer || 'Unassigned'}</div>
-                            </div>
+
+                            {videographerStaff.length > 0 && (
+                                <div className="mt-2 pt-2 border-t border-gray-200">
+                                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Freelancer</div>
+                                    <div className="flex flex-col gap-2">
+                                        {videographerStaff.map((entry: string, i: number) => {
+                                            const { displayName, phone } = parseFreelancer(entry);
+                                            return (
+                                                <div key={i} className="flex items-center justify-between p-2.5 bg-pink-50 rounded-lg border border-pink-100/60">
+                                                    <div>
+                                                        <div className="text-[9px] font-bold text-pink-400 uppercase tracking-wider mb-0.5">Name</div>
+                                                        <div className="text-xs font-bold text-pink-900 capitalize leading-none">{displayName}</div>
+                                                    </div>
+                                                    {phone && (
+                                                        <div className="text-right">
+                                                            <div className="text-[9px] font-bold text-pink-400 uppercase tracking-wider mb-0.5">Mobile Number</div>
+                                                            <div className="text-xs font-bold text-pink-900 leading-none">{phone}</div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Submitted Details from JSON */}
@@ -624,14 +719,41 @@ export default function RawDataView({ onBack, data, apiBasePath = '/data-manager
 
                     <div className="space-y-6 flex-grow">
                         {/* Team Member */}
-                        <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-teal-600 shadow-sm border border-gray-200">
-                                <User size={18} />
+                        <div className="flex flex-col gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-teal-600 shadow-sm border border-gray-200 shrink-0">
+                                    <User size={18} />
+                                </div>
+                                <div>
+                                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Assigned Drone Operator</div>
+                                    <div className="text-sm font-bold text-gray-900">{drone || 'Unassigned'}</div>
+                                </div>
                             </div>
-                            <div>
-                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Assigned Drone Operator</div>
-                                <div className="text-sm font-bold text-gray-900">{drone || 'Unassigned'}</div>
-                            </div>
+
+                            {droneStaff.length > 0 && (
+                                <div className="mt-2 pt-2 border-t border-gray-200">
+                                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Freelancer</div>
+                                    <div className="flex flex-col gap-2">
+                                        {droneStaff.map((entry: string, i: number) => {
+                                            const { displayName, phone } = parseFreelancer(entry);
+                                            return (
+                                                <div key={i} className="flex items-center justify-between p-2.5 bg-teal-50 rounded-lg border border-teal-100/60">
+                                                    <div>
+                                                        <div className="text-[9px] font-bold text-teal-400 uppercase tracking-wider mb-0.5">Name</div>
+                                                        <div className="text-xs font-bold text-teal-900 capitalize leading-none">{displayName}</div>
+                                                    </div>
+                                                    {phone && (
+                                                        <div className="text-right">
+                                                            <div className="text-[9px] font-bold text-teal-400 uppercase tracking-wider mb-0.5">Mobile Number</div>
+                                                            <div className="text-xs font-bold text-teal-900 leading-none">{phone}</div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Submitted Details from JSON */}

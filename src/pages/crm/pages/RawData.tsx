@@ -126,7 +126,7 @@ export default function RawData({ workflowPhase = 'all', title, description }: R
         const mapped = res.data.data.map((item: any) => ({
           id: String(item.id),
           serialNumber: item.lead_serial_number || String(item.id),
-          employee: item.photographer ? item.photographer : (item.videographer ? item.videographer : (item.drone ? item.drone : 'Unknown')),
+          employee: item.photographer_name || item.photographer || item.videographer_name || item.videographer || item.drone_name || item.drone || 'Unknown',
           role: item.photographer && item.videographer && item.drone
             ? 'Photo, Video & Drone'
             : item.photographer && item.videographer ? 'Photo & Video'
@@ -367,8 +367,8 @@ export default function RawData({ workflowPhase = 'all', title, description }: R
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex justify-end items-center gap-1.5">
-                        {/* Primary: Assign */}
-                        {row.statusMeta.crmVerified ? (
+                        {/* Primary: Assign (only after delivery status is set) */}
+                        {row.statusMeta.crmVerified && row.clientDeliveryStatus ? (
                           <button
                             onClick={() => { setSelectedData(row); setView('assignTeam'); }}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 transition-all"
@@ -377,6 +377,20 @@ export default function RawData({ workflowPhase = 'all', title, description }: R
                             <Users size={13} strokeWidth={2.5} />
                             Assign
                           </button>
+                        ) : row.statusMeta.crmVerified && !row.clientDeliveryStatus ? (
+                          <button
+                            onClick={() => handleSendToClient(row)}
+                            disabled={sendingId === row.id}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                              sendingId === row.id
+                                ? 'opacity-50 text-gray-400 bg-gray-50 border-gray-100 cursor-wait'
+                                : 'text-emerald-600 bg-emerald-50 border-emerald-100 hover:bg-emerald-100 hover:border-emerald-200'
+                            }`}
+                            title="Send to Client"
+                          >
+                            {sendingId === row.id ? <RefreshCw size={13} className="animate-spin" /> : <Send size={13} />}
+                            Send
+                          </button>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-gray-300 bg-gray-50 border border-gray-100 cursor-not-allowed select-none" title="Verify first to assign">
                             <Users size={13} strokeWidth={2.5} />
@@ -384,29 +398,6 @@ export default function RawData({ workflowPhase = 'all', title, description }: R
                           </span>
                         )}
 
-                        {/* Primary: Send to Client */}
-                        {row.statusMeta.crmVerified && !row.clientDeliveryStatus ? (
-                          <button
-                            onClick={() => handleSendToClient(row)}
-                            disabled={sendingId === row.id}
-                            className={`p-1.5 rounded-lg border transition-all ${
-                              sendingId === row.id
-                                ? 'opacity-50 text-gray-400 bg-gray-50 border-gray-100 cursor-wait'
-                                : 'text-emerald-600 bg-emerald-50 border-emerald-100 hover:bg-emerald-100 hover:border-emerald-200'
-                            }`}
-                            title="Send to Client"
-                          >
-                            {sendingId === row.id ? <RefreshCw size={14} className="animate-spin" /> : <Send size={14} />}
-                          </button>
-                        ) : row.statusMeta.crmVerified && row.clientDeliveryStatus ? (
-                          <span className="p-1.5 rounded-lg text-emerald-400 bg-emerald-50/50 border border-emerald-100/50 cursor-default" title="Already sent">
-                            <CheckCircle2 size={14} />
-                          </span>
-                        ) : (
-                          <span className="p-1.5 rounded-lg text-gray-200 bg-transparent border border-transparent cursor-default invisible">
-                            <Send size={14} />
-                          </span>
-                        )}
 
                         {/* Secondary: View (non-pre-production only) */}
                         {workflowPhase !== 'pre_production' && (
