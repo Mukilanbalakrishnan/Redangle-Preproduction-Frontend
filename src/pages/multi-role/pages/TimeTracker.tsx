@@ -20,6 +20,7 @@ interface AssignedLead {
     status?: string
     mode: TrackerMode
     task_names?: string[]
+    all_assignments?: AssignedLead[]
 }
 
 interface RuntimeSession {
@@ -337,19 +338,22 @@ export default function TimeTracker() {
     })
 
     const groupedLeads = Object.values(filteredLeadsFlat.reduce((acc, curr) => {
-        const key = curr.mode === 'work'
-            ? `work-${curr.lead_employee_id}`
-            : `event-${curr.lead_code || curr.lead_id}`
+        const projectKey = curr.lead_code || String(curr.lead_id)
+        const key = `${curr.mode}-${projectKey}`
 
         if (!acc[key]) {
             acc[key] = {
                 ...curr,
                 task_names: [curr.task_name],
+                all_assignments: [curr]
             }
         } else {
             const taskNames = acc[key].task_names || []
             if (!taskNames.includes(curr.task_name)) {
                 acc[key].task_names = [...taskNames, curr.task_name]
+            }
+            if (!acc[key].all_assignments!.find(a => a.lead_employee_id === curr.lead_employee_id)) {
+                acc[key].all_assignments!.push(curr)
             }
         }
         return acc
@@ -372,6 +376,10 @@ export default function TimeTracker() {
     const badgeTone = selectedMode === 'work'
         ? 'border-indigo-100 bg-indigo-50 text-indigo-700'
         : uploadUnlocked ? 'border-emerald-100 bg-emerald-50 text-emerald-700' : 'border-blue-100 bg-blue-50 text-blue-700'
+
+    const selectedGroup = useMemo(() => {
+        return groupedLeads.find(group => group.all_assignments?.some(a => a.lead_employee_id === selectedLead?.lead_employee_id && a.mode === selectedLead?.mode))
+    }, [groupedLeads, selectedLead])
 
     return (
         <div className="flex min-h-[calc(100vh-140px)] gap-6">
@@ -398,20 +406,23 @@ export default function TimeTracker() {
                         <p className="py-4 text-center text-xs text-gray-400">No accepted assignments</p>
                     ) : (
                         <div className="space-y-1">
-                            {groupedLeads.map((lead: AssignedLead) => (
+                            {groupedLeads.map((lead: AssignedLead) => {
+                                const isSelectedGroup = lead.all_assignments?.some(a => a.lead_employee_id === selectedLead?.lead_employee_id && a.mode === selectedLead?.mode) || false
+                                return (
                                 <button
-                                    key={`${lead.mode}-${lead.lead_employee_id}-${lead.lead_code}`}
+                                    key={`${lead.mode}-${lead.lead_code || lead.lead_id}`}
                                     onClick={() => {
                                         if (timerRef.current) clearInterval(timerRef.current)
-                                        setSelectedLead(lead)
+                                        const firstAssignment = lead.all_assignments?.[0] || lead
+                                        setSelectedLead(firstAssignment)
                                         setSelectedDate(today())
                                         setRuntime(null)
                                         setWorkSummary([])
                                         setElapsedSeconds(0)
                                         setTotalSeconds(0)
-                                        refetchRuntime(lead)
+                                        refetchRuntime(firstAssignment)
                                     }}
-                                    className={`w-full rounded-lg border p-3 text-left transition-all ${selectedLead?.mode === lead.mode && selectedLead?.lead_employee_id === lead.lead_employee_id
+                                    className={`w-full rounded-lg border p-3 text-left transition-all ${isSelectedGroup
                                         ? 'border-blue-200 bg-blue-50 shadow-sm'
                                         : 'border-transparent bg-white hover:border-gray-100 hover:bg-gray-50'
                                         }`}
@@ -429,7 +440,8 @@ export default function TimeTracker() {
                                         </span>
                                     </div>
                                 </button>
-                            ))}
+                                )
+                            })}
                         </div>
                     )}
                 </div>
@@ -451,13 +463,39 @@ export default function TimeTracker() {
                                 <div>
                                     <h2 className="mb-1 text-xl font-bold text-gray-900">{selectedLead.name}</h2>
                                     <p className="text-sm font-medium text-gray-500">
-                                        {selectedLead.lead_code || `LD-${selectedLead.lead_id}`} - {selectedLead.type} - {selectedLead.task_names?.join(', ') || selectedLead.task_name}
+                                        {selectedLead.lead_code || `LD-${selectedLead.lead_id}`} - {selectedLead.type}
                                     </p>
                                 </div>
                                 <div className={`rounded-full border px-3 py-1 text-xs font-bold ${badgeTone}`}>
                                     {badgeText}
                                 </div>
                             </div>
+                            {selectedGroup?.all_assignments && selectedGroup.all_assignments.length > 0 && (
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                    {selectedGroup.all_assignments.map((assignment: AssignedLead) => (
+                                        <button
+                                            key={assignment.lead_employee_id}
+                                            onClick={() => {
+                                                if (timerRef.current) clearInterval(timerRef.current)
+                                                setSelectedLead(assignment)
+                                                setSelectedDate(today())
+                                                setRuntime(null)
+                                                setWorkSummary([])
+                                                setElapsedSeconds(0)
+                                                setTotalSeconds(0)
+                                                refetchRuntime(assignment)
+                                            }}
+                                            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all border ${
+                                                selectedLead.lead_employee_id === assignment.lead_employee_id
+                                                    ? (selectedMode === 'work' ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-blue-600 text-white border-blue-600 shadow-sm')
+                                                    : (selectedMode === 'work' ? 'bg-indigo-50 text-indigo-600 border-indigo-100 hover:bg-indigo-100' : 'bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100')
+                                            }`}
+                                        >
+                                            {assignment.task_name}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         <div className="grid gap-6 xl:grid-cols-[1fr_340px]">

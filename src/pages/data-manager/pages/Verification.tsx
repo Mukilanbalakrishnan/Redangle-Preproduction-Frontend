@@ -18,7 +18,7 @@ import {
     Video,
 } from 'lucide-react'
 import { matchesDataManagerStage, useDataManagerStageScope } from '../utils/stageScope'
-import { ShootDetailsViewer } from './RawDataView'
+
 
 const API_URL = import.meta.env.VITE_API_URL
 
@@ -513,82 +513,7 @@ export default function Verification() {
 
             <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
                 <div className="space-y-6">
-                    <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-                        <div className="mb-5 flex items-center justify-between gap-3">
-                            <div>
-                                <h2 className="flex items-center gap-2 text-sm font-bold text-gray-900">
-                                    <Database size={16} className="text-indigo-600" /> Uploaded Evidence
-                                </h2>
-                                <p className="mt-1 text-xs text-gray-500">Open each source and verify counts, accessibility, and notes.</p>
-                            </div>
-                        </div>
 
-                        {uploadedGroups.length === 0 ? (
-                            <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-6 text-center text-sm text-gray-400">
-                                No uploaded evidence found for this lead.
-                            </div>
-                        ) : (
-                            <div className="grid gap-3">
-                                {uploadedGroups.map(group => {
-                                    const Icon = group.Icon
-                                    const hardDisk = hasText(group.hardDiskDate)
-                                    return (
-                                        <div key={group.key} className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-                                            <div className="flex flex-wrap items-start justify-between gap-3">
-                                                <div className="flex gap-3">
-                                                    <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${group.tone}`}>
-                                                        <Icon size={18} />
-                                                    </div>
-                                                    <div>
-                                                        <h3 className="text-sm font-bold text-gray-900">{group.label}</h3>
-                                                        <p className="text-xs text-gray-500">{group.owner || 'Owner not assigned'}</p>
-                                                    </div>
-                                                </div>
-                                                {group.link ? (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => openLink(group.link)}
-                                                        className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100"
-                                                    >
-                                                        <LinkIcon size={14} /> Open Files
-                                                    </button>
-                                                ) : (
-                                                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700">
-                                                        <HardDrive size={14} /> Hard Disk
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="mt-4 grid gap-3 text-xs text-gray-500 md:grid-cols-3">
-                                                <span className="rounded-lg bg-white px-3 py-2 font-semibold">{group.count || 0} files logged</span>
-                                                <span className="rounded-lg bg-white px-3 py-2 font-semibold">{group.camera || 'Camera not added'}</span>
-                                                <span className="rounded-lg bg-white px-3 py-2 font-semibold">
-                                                    {hardDisk ? `Disk date ${formatDate(group.hardDiskDate)}` : group.deliveryMethod || 'Drive link'}
-                                                </span>
-                                            </div>
-                                            {(() => {
-                                                const parsedNotes = safeParseJSON(group.notes)
-                                                if (parsedNotes && typeof parsedNotes === 'object') {
-                                                    return (
-                                                        <div className="mt-4">
-                                                            <ShootDetailsViewer details={parsedNotes} clientName={selectedData?.client} />
-                                                        </div>
-                                                    )
-                                                }
-                                                return group.notes ? (
-                                                    <p className="mt-3 rounded-lg bg-white px-3 py-2 text-xs font-medium text-gray-600">{group.notes}</p>
-                                                ) : null
-                                            })()}
-                                            {hardDisk && (
-                                                <p className={`mt-3 text-xs font-bold ${group.hardDiskReceived ? 'text-emerald-600' : 'text-amber-600'}`}>
-                                                    {group.hardDiskReceived ? 'Hard disk received' : 'Hard disk receipt pending'}
-                                                </p>
-                                            )}
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        )}
-                    </section>
 
                     <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
                         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
