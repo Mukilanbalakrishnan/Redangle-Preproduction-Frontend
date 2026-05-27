@@ -1,8 +1,8 @@
+import { getCurrentUserRoles, getCurrentEmployeeId } from '../../../utils/currentUser';
 import NotificationsPage from '../../../components/NotificationsPage';
 
 export default function Notifications() {
-    const userStr = localStorage.getItem('ra_user');
-    const user = userStr ? JSON.parse(userStr) : null;
-    const role = user?.role || 'employee-1';
-    return <NotificationsPage role={role} />;
+    const roles = getCurrentUserRoles(['employee-1']);
+    const employeeId = getCurrentEmployeeId();
+    return <NotificationsPage roles={roles} employeeId={employeeId} showRoleFilter={true} showStageFilter={true} />;
 }

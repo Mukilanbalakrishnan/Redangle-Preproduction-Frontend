@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Mail, MessageCircle } from 'lucide-react'
 import NotificationDropdown from '../../../components/NotificationDropdown'
+import { getCurrentUserRoles, getCurrentEmployeeId } from '../../../utils/currentUser';
 import RoleSwitcher from '../../../components/RoleSwitcher'
 import { useLocation } from 'react-router-dom'
 
@@ -27,6 +28,8 @@ export default function Topbar() {
             ? { label: 'Post-production CRM', role: 'post-production-crm', notificationsPath: '/post-production-crm/notifications' }
             : { label: 'CRM', role: 'crm', notificationsPath: '/crm/notifications' }
     const isSplitCrm = roleInfo.role !== 'crm'
+    const roles = getCurrentUserRoles([roleInfo.role]);
+    const employeeId = getCurrentEmployeeId();
 
     useEffect(() => {
         try {
@@ -59,7 +62,7 @@ export default function Topbar() {
                 <button className="p-2 text-gray-400 hover:text-red-500 transition-colors" title="Gmail">
                     <Mail size={18} />
                 </button>
-                <NotificationDropdown role={roleInfo.role} bellSize={18} notificationsPath={roleInfo.notificationsPath} />
+                <NotificationDropdown roles={roles} employeeId={employeeId} bellSize={18} notificationsPath={roleInfo.notificationsPath} />
                 {!isSplitCrm && <RoleSwitcher />}
 
                 <div className="flex items-center gap-2.5">

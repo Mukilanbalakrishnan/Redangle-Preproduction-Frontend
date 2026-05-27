@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Search, Mail, MessageCircle } from 'lucide-react'
 import NotificationDropdown from '../../../components/NotificationDropdown'
+import { getCurrentUserRoles, getCurrentEmployeeId } from '../../../utils/currentUser';
 import RoleSwitcher from '../../../components/RoleSwitcher'
 
 export default function DataManagementTopbar() {
+    const roles = getCurrentUserRoles(['data_management']);
+    const employeeId = getCurrentEmployeeId();
     const [userName, setUserName] = useState('Admin');
     const [userRole, setUserRole] = useState('Admin');
     const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
@@ -49,7 +52,7 @@ export default function DataManagementTopbar() {
                 <button className="p-2 text-gray-400 hover:text-red-500 transition-colors" title="Gmail">
                     <Mail size={20} />
                 </button>
-                <NotificationDropdown role="data_management" bellSize={20} notificationsPath="/data-management/notifications" />
+                <NotificationDropdown roles={roles} employeeId={employeeId} notificationsPath="/data-management/notifications" />
                 <RoleSwitcher />
 
                 <div className="h-8 w-[1px] bg-gray-200"></div>

@@ -1,7 +1,7 @@
 import type { NotificationItem } from '../hooks/useNotifications'
 
-export const getNotificationTargetPath = (role: string, note: NotificationItem) => {
-    if (role !== 'data_manager') return null
+export const getNotificationTargetPath = (roles: string[], note: NotificationItem) => {
+    if (!roles.includes('data_manager') && !roles.includes('data-manager')) return null
 
     const text = `${note.type || ''} ${note.title || ''} ${note.detail || ''}`.toLowerCase()
     const stage = text.includes('event') ? 'event' : 'pre-production'

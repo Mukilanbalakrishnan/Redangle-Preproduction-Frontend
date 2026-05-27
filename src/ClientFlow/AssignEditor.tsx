@@ -4,6 +4,7 @@ import { Calendar, Video, Edit3, Users, Bell, Camera, Image, Film } from 'lucide
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { EmployeePicker, type Employee } from './assignTeamShared';
+import { getCurrentUserDisplayName, getCurrentUserRole } from '../utils/currentUser';
 
 function TagInput({ label, icon, tags, onAdd, onRemove }: {
     label: string, icon: React.ReactNode, tags: string[], onAdd: (v: string) => void, onRemove: (v: string) => void
@@ -199,6 +200,8 @@ export default function AssignEditor() {
                 editors: editorData,
                 assistants,
                 phase: isPostProduction ? 'post_production' : 'pre_production',
+                assigned_by_name: getCurrentUserDisplayName(),
+                assigned_by_role: getCurrentUserRole(isPostProduction ? 'operational-manager' : 'crm'),
             };
 
             const res = await axios.post(`${import.meta.env.VITE_API_URL}/employee-projects/batch`, payload);

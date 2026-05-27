@@ -1,10 +1,15 @@
 import { Mail, MessageCircle, Search } from 'lucide-react'
-import { getEmployeeRole, getRoleConfig } from '../employeeRoleConfig'
+import { getRoleConfig } from '../employeeRoleConfig'
 import NotificationDropdown from '../../../components/NotificationDropdown'
+import { getCurrentUserRoles, getCurrentEmployeeId } from '../../../utils/currentUser';
 import RoleSwitcher from '../../../components/RoleSwitcher'
 
 export default function EmployeeTopbar() {
-    const role = getEmployeeRole()
+    const userStr = localStorage.getItem('ra_user')
+    const userObj = userStr ? JSON.parse(userStr) : null
+    const role = userObj?.role || 'employee-1'
+    const roles = getCurrentUserRoles([role]);
+    const employeeId = getCurrentEmployeeId();
     const config = getRoleConfig(role)
 
     let userName = 'John Doe'
@@ -48,7 +53,7 @@ export default function EmployeeTopbar() {
                 <button className="p-2 text-gray-400 hover:text-red-500 transition-colors" title="Gmail">
                     <Mail size={20} />
                 </button>
-                <NotificationDropdown role={role} bellSize={20} notificationsPath="/employee/notifications" />
+                <NotificationDropdown roles={roles} employeeId={employeeId} bellSize={20} notificationsPath="/employee/notifications" />
                 <RoleSwitcher />
 
                 <div className="h-10 w-px bg-gray-200"></div>

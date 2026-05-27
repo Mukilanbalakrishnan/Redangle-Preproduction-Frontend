@@ -2,9 +2,12 @@
 import { useState, useEffect } from 'react'
 import { Mail, MessageCircle } from 'lucide-react'
 import NotificationDropdown from '../../../components/NotificationDropdown'
+import { getCurrentUserRoles, getCurrentEmployeeId } from '../../../utils/currentUser';
 import RoleSwitcher from '../../../components/RoleSwitcher'
 
 export default function EventCoordinatorTopbar() {
+    const roles = getCurrentUserRoles(['event_coordinator']);
+    const employeeId = getCurrentEmployeeId();
     const [user, setUser] = useState<any>(null)
     const [userName, setUserName] = useState('Event Coordinator')
     const [userRole, setUserRole] = useState('Coordinator')
@@ -50,7 +53,7 @@ export default function EventCoordinatorTopbar() {
                 <button className="p-2 text-gray-400 hover:text-red-500 transition-colors" title="Gmail">
                     <Mail size={18} />
                 </button>
-                <NotificationDropdown role="event_coordinator" bellSize={18} notificationsPath="/event-coordinator/notifications" />
+                <NotificationDropdown roles={roles} employeeId={employeeId} notificationsPath="/event-coordinator/notifications" />
                 <RoleSwitcher />
 
                 <div className="flex items-center gap-2.5">

@@ -1,5 +1,8 @@
+import { getCurrentUserRoles, getCurrentEmployeeId } from '../../../utils/currentUser';
 import NotificationsPage from '../../../components/NotificationsPage';
 
 export default function Notifications() {
-    return <NotificationsPage role="admin" />;
+    const roles = getCurrentUserRoles(['admin']);
+    const employeeId = getCurrentEmployeeId();
+    return <NotificationsPage roles={roles} employeeId={employeeId} showRoleFilter={true} showStageFilter={true} />;
 }
