@@ -366,53 +366,63 @@ export default function RawData({ workflowPhase = 'all', title, description }: R
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex justify-end items-center gap-1">
-                        {row.statusMeta.crmVerified && (
-                          <>
-                            {row.clientDeliveryStatus ? (
-                              <button
-                                onClick={() => { setSelectedData(row); setView('assignTeam'); }}
-                                className="p-2 rounded-lg text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 transition-all flex items-center gap-1 text-xs font-semibold mr-1"
-                                title="Assign Editors"
-                              >
-                                <Users size={15} />
-                                <span className="hidden xl:inline">Assign</span>
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => handleSendToClient(row)}
-                                disabled={sendingId === row.id}
-                                className={`p-2 rounded-lg transition-all flex items-center gap-1 text-xs font-semibold mr-1 ${
-                                  sendingId === row.id ? 'opacity-50 text-gray-400' : 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50'
-                                }`}
-                                title="Send to Client"
-                              >
-                                {sendingId === row.id ? <RefreshCw size={15} className="animate-spin" /> : <Send size={15} />}
-                              </button>
-                            )}
-                          </>
-                        )}
-                        {workflowPhase !== 'pre_production' && (
+                      <div className="flex justify-end items-center gap-1.5">
+                        {/* Primary: Assign (only after delivery status is set) */}
+                        {row.statusMeta.crmVerified && row.clientDeliveryStatus ? (
                           <button
-                            onClick={() => { setSelectedData(row); setView('view') }}
-                            className="p-2 rounded-lg text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 transition-all"
-                            title="View details"
+                            onClick={() => { setSelectedData(row); setView('assignTeam'); }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 transition-all"
+                            title="Assign Editors"
                           >
-                            <Eye size={15} />
+                            <Users size={13} strokeWidth={2.5} />
+                            Assign
                           </button>
+                        ) : row.statusMeta.crmVerified && !row.clientDeliveryStatus ? (
+                          <button
+                            onClick={() => handleSendToClient(row)}
+                            disabled={sendingId === row.id}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                              sendingId === row.id
+                                ? 'opacity-50 text-gray-400 bg-gray-50 border-gray-100 cursor-wait'
+                                : 'text-emerald-600 bg-emerald-50 border-emerald-100 hover:bg-emerald-100 hover:border-emerald-200'
+                            }`}
+                            title="Send to Client"
+                          >
+                            {sendingId === row.id ? <RefreshCw size={13} className="animate-spin" /> : <Send size={13} />}
+                            Send
+                          </button>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-gray-300 bg-gray-50 border border-gray-100 cursor-not-allowed select-none" title="Verify first to assign">
+                            <Users size={13} strokeWidth={2.5} />
+                            Assign
+                          </span>
                         )}
+
+
+                        {/* Secondary: View */}
+                        <button
+                          onClick={() => { setSelectedData(row); setView('view') }}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
+                          title="View details"
+                        >
+                          <Eye size={14} />
+                        </button>
+
+                        {/* Secondary: Edit */}
                         <button
                           onClick={() => setEditData(row)}
                           disabled={row.statusMeta.crmVerified}
-                          className={`p-2 rounded-lg transition-all ${row.statusMeta.crmVerified ? 'opacity-30 cursor-not-allowed text-gray-400' : 'text-gray-500 hover:text-indigo-600 hover:bg-indigo-50'}`}
+                          className={`p-1.5 rounded-lg transition-all ${row.statusMeta.crmVerified ? 'opacity-25 cursor-not-allowed text-gray-300' : 'text-gray-400 hover:text-amber-600 hover:bg-amber-50'}`}
                           title={row.statusMeta.crmVerified ? 'Cannot edit verified data' : 'Edit counts'}
                         >
                           <Pencil size={14} />
                         </button>
+
+                        {/* Secondary: Delete */}
                         <button
                           onClick={() => setDeleteData(row.id)}
                           disabled={row.statusMeta.crmVerified}
-                          className={`p-2 rounded-lg transition-all ${row.statusMeta.crmVerified ? 'opacity-30 cursor-not-allowed text-gray-400' : 'text-gray-500 hover:text-red-500 hover:bg-red-50'}`}
+                          className={`p-1.5 rounded-lg transition-all ${row.statusMeta.crmVerified ? 'opacity-25 cursor-not-allowed text-gray-300' : 'text-gray-400 hover:text-red-500 hover:bg-red-50'}`}
                           title={row.statusMeta.crmVerified ? 'Cannot delete verified data' : 'Delete record'}
                         >
                           <Trash2 size={14} />

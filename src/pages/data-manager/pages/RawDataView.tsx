@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, User, Calendar, Camera, Video, CheckCircle, RotateCcw, Image as ImageIcon, Send, Users, Link2, HardDrive, MapPin, Clock, Briefcase } from 'lucide-react'
+import { ArrowLeft, User, Calendar, Camera, Video, CheckCircle, RotateCcw, Image as ImageIcon, Send, Users, Link2, HardDrive, MapPin, Briefcase } from 'lucide-react'
 import { toast } from 'sonner'
 import { createNotification } from '../../../api/notification.api'
 const API_URL = import.meta.env.VITE_API_URL
@@ -102,12 +102,7 @@ export const ShootDetailsViewer = ({ details, clientName }: { details: any, clie
     )
 }
 
-const DetailSection = ({ title, value }: { title: string, value: any }) => (
-    <div className="flex flex-col gap-1">
-        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{title}</span>
-        <span className="text-sm font-semibold text-gray-900">{value || '—'}</span>
-    </div>
-)
+
 
 export default function RawDataView({ onBack, data, apiBasePath = '/data-manager', isCrmContext = false, onCrmVerify, onSendToClient, onAssignEditingTeam }: { onBack: () => void, data: any, apiBasePath?: string, isCrmContext?: boolean, onCrmVerify?: (leadId: string | number, clientName: string) => void, onSendToClient?: () => void, onAssignEditingTeam?: () => void }) {
     const navigate = useNavigate()
@@ -223,11 +218,8 @@ export default function RawDataView({ onBack, data, apiBasePath = '/data-manager
     const numVideos = data.numVideos ?? rawData.num_videos ?? 0
     const photoDrive = data.drive_link ?? rawData.drive_link ?? null
     const videoDrive = data.video_drive_link ?? rawData.video_drive_link ?? null
-    const droneNumImages = isEventPhase ? (data.droneImages ?? rawData.drone_num_images ?? 0) : 0
-    const droneNumVideos = isEventPhase ? (data.droneVideos ?? rawData.drone_num_videos ?? 0) : 0
     const dronePhotoDrive = isEventPhase ? (data.drone_photo_drive_link ?? rawData.drone_photo_drive_link ?? null) : null
     const droneVideoDrive = isEventPhase ? (data.drone_video_drive_link ?? rawData.drone_video_drive_link ?? null) : null
-    const includesRaw = data.includesRaw ?? rawData.includes_raw ?? false
     
     const photoDetails = safeParseJSON(rawData.upload_notes)
     const videoDetails = safeParseJSON(rawData.video_upload_notes)
@@ -269,12 +261,13 @@ export default function RawDataView({ onBack, data, apiBasePath = '/data-manager
     const [localApprovedRoles, setLocalApprovedRoles] = useState<string[]>([])
 
     useEffect(() => {
+        if (isCrmContext) return
         const approved = []
         if (rawData.photo_approved || data.photo_approved) approved.push('photographer')
         if (rawData.video_approved || data.video_approved) approved.push('videographer')
         if (rawData.drone_approved || data.drone_approved) approved.push('drone')
         setLocalApprovedRoles(approved)
-    }, [rawData.photo_approved, data.photo_approved, rawData.video_approved, data.video_approved, rawData.drone_approved, data.drone_approved])
+    }, [rawData.photo_approved, data.photo_approved, rawData.video_approved, data.video_approved, rawData.drone_approved, data.drone_approved, isCrmContext])
 
     const getRolesNeeded = () => {
         const needed = []
@@ -416,17 +409,7 @@ export default function RawDataView({ onBack, data, apiBasePath = '/data-manager
         </div>
     )
 
-    const MediaPreview = ({ label, src }: { label: string, src: string }) => (
-        <div className="space-y-1">
-            <p className="text-[9px] font-bold text-gray-400 uppercase ml-1">{label}</p>
-            <img
-                src={`${API_URL.replace('/api', '')}/uploads/${src}`}
-                alt={label}
-                className="w-full h-32 object-cover rounded-xl border border-gray-200 shadow-sm hover:scale-[1.02] transition-transform cursor-pointer"
-                onClick={() => window.open(`${API_URL.replace('/api', '')}/uploads/${src}`, '_blank')}
-            />
-        </div>
-    )
+
 
     return (
         <div className="max-w-7xl mx-auto pb-12">

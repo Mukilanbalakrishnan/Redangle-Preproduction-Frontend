@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Mail, MessageCircle } from 'lucide-react'
 import NotificationDropdown from '../../../components/NotificationDropdown'
+import { getCurrentUserRoles, getCurrentEmployeeId } from '../../../utils/currentUser';
 import RoleSwitcher from '../../../components/RoleSwitcher'
 
 export default function MultiRoleTopbar() {
+    const roles = getCurrentUserRoles(['photographer']);
+    const employeeId = getCurrentEmployeeId();
     const [user, setUser] = useState({ name: 'User', role: 'Multi-Role', profileImageUrl: null as string | null });
 
     useEffect(() => {
@@ -29,7 +32,7 @@ export default function MultiRoleTopbar() {
                 <button className="p-2 text-gray-400 hover:text-red-500 transition-colors" title="Gmail">
                     <Mail size={18} />
                 </button>
-                <NotificationDropdown role="photographer" bellSize={18} notificationsPath="/multi-role/dashboard" />
+                <NotificationDropdown roles={roles} employeeId={employeeId} notificationsPath="/multi-role/notifications" />
                 <RoleSwitcher />
 
                 <div className="flex items-center gap-2.5 border-l border-gray-100 pl-4">

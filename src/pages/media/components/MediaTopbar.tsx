@@ -1,13 +1,19 @@
 import { Mail, MessageCircle } from 'lucide-react'
 import { useMediaRole } from '../../../hooks/useMediaRole'
 import NotificationDropdown from '../../../components/NotificationDropdown'
+import { getCurrentUserRoles, getCurrentEmployeeId } from '../../../utils/currentUser';
 import RoleSwitcher from '../../../components/RoleSwitcher'
 
 export default function MediaTopbar() {
-    const { role, fromRole, userName, user } = useMediaRole()
+    const { role, fromRole, user } = useMediaRole()
+    const userName = user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user?.name || 'Media'
+    const roles = getCurrentUserRoles([fromRole]);
+    const employeeId = getCurrentEmployeeId();
+    
     const profileImageUrl = user?.profile_image
         ? `${import.meta.env.VITE_API_URL?.replace('/api', '')}/uploads/${user.profile_image}`
         : null
+
     return (
         <header
             className="fixed top-0 right-0 z-30 flex items-center justify-between px-6"
@@ -38,7 +44,7 @@ export default function MediaTopbar() {
                 <button className="p-2 text-gray-500 hover:text-red-500 transition-colors" title="Gmail">
                     <Mail size={18} />
                 </button>
-                <NotificationDropdown role={fromRole} bellSize={18} notificationsPath="/media/notifications" />
+                <NotificationDropdown roles={roles} employeeId={employeeId} bellSize={18} notificationsPath="/media/notifications" />
                 <RoleSwitcher />
 
                 <div className="flex items-center gap-3 pl-6 border-l border-gray-100">

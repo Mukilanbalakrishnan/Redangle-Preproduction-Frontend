@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight, CalendarDays, Camera, CheckCircle2, Clock3, MapP
 import axios from 'axios'
 import { getAssignTeam, saveAssignTeam } from '../../../api/assignTeam.api'
 import { getEventDetailsByLeadId, saveEventDetails } from '../../../api/eventDetails.api'
-import { EmployeePicker, TagInput, type Employee } from '../../../ClientFlow/assignTeamShared'
+import { EmployeePicker, AdditionalStaffPicker, type Employee } from '../../../ClientFlow/assignTeamShared'
 
 type ClientLike = {
   id: string
@@ -384,9 +384,14 @@ export default function EventStageClientView({ client, onBack, onNext }: Props) 
                 onChange={(value) => setField('drone', value)}
                 icon={<Users size={16} style={{ color: '#64748B' }} />}
               />
-              <TagInput
-                label="Additional Staff"
+              <AdditionalStaffPicker
                 tags={additionalStaff}
+                employees={employees}
+                availableRoles={[
+                  { key: 'photographer', label: 'Photographer' },
+                  { key: 'videographer', label: 'Videographer' },
+                  { key: 'drone', label: 'Drone Operator' },
+                ]}
                 onAdd={(value) => setAdditionalStaff(prev => [...prev, value])}
                 onRemove={removeAdditionalStaff}
                 icon={<Users size={16} style={{ color: '#64748B' }} />}

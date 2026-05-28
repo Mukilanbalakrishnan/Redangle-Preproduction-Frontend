@@ -1,8 +1,11 @@
 import { Mail, MessageCircle } from 'lucide-react'
 import NotificationDropdown from '../../../components/NotificationDropdown'
+import { getCurrentUserRoles, getCurrentEmployeeId } from '../../../utils/currentUser';
 import RoleSwitcher from '../../../components/RoleSwitcher'
 
 export default function ClientTopbar() {
+    const roles = getCurrentUserRoles(['client']);
+    const employeeId = getCurrentEmployeeId();
     const userStr = localStorage.getItem('ra_user')
     const user = userStr ? JSON.parse(userStr) : null
 
@@ -37,7 +40,7 @@ export default function ClientTopbar() {
                 <div className="h-8 w-[1px] bg-slate-200 mx-1 hidden sm:block"></div>
 
                 {/* NOTIFICATIONS */}
-                <NotificationDropdown role="client" bellSize={20} notificationsPath="/client/notifications" />
+                <NotificationDropdown roles={roles} employeeId={employeeId} notificationsPath="/client/notifications" />
                 <RoleSwitcher />
 
                 <div className="h-8 w-[1px] bg-slate-200 mx-1"></div>

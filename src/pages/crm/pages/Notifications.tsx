@@ -1,13 +1,8 @@
+import { getCurrentUserRoles, getCurrentEmployeeId } from '../../../utils/currentUser';
 import NotificationsPage from '../../../components/NotificationsPage';
-import { useLocation } from 'react-router-dom';
 
 export default function Notifications() {
-    const location = useLocation();
-    const role = location.pathname.startsWith('/pre-production-crm')
-        ? 'pre-production-crm'
-        : location.pathname.startsWith('/post-production-crm')
-            ? 'post-production-crm'
-            : 'crm';
-
-    return <NotificationsPage role={role} />;
+    const roles = getCurrentUserRoles(['crm']);
+    const employeeId = getCurrentEmployeeId();
+    return <NotificationsPage roles={roles} employeeId={employeeId} showRoleFilter={true} showStageFilter={true} />;
 }

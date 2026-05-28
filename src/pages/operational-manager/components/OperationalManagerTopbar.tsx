@@ -1,9 +1,12 @@
 import { Search, Mail, MessageCircle } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import NotificationDropdown from '../../../components/NotificationDropdown'
+import { getCurrentUserRoles, getCurrentEmployeeId } from '../../../utils/currentUser';
 import RoleSwitcher from '../../../components/RoleSwitcher'
 
 export default function OperationalManagerTopbar() {
+    const roles = getCurrentUserRoles(['operational_manager']);
+    const employeeId = getCurrentEmployeeId();
     const [userName, setUserName] = useState('Operational Manager');
     const [userRole, setUserRole] = useState('Operational Manager');
     const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
@@ -55,7 +58,7 @@ export default function OperationalManagerTopbar() {
                 <button className="p-2 text-gray-400 hover:text-red-500 transition-colors" title="Gmail">
                     <Mail size={18} />
                 </button>
-                <NotificationDropdown role="operational_manager" bellSize={18} notificationsPath="/operational-manager/notifications" />
+                <NotificationDropdown roles={roles} employeeId={employeeId} notificationsPath="/operational-manager/notifications" />
                 <RoleSwitcher />
 
                 <div className="flex items-center gap-2.5">

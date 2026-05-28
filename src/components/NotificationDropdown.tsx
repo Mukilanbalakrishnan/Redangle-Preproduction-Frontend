@@ -69,17 +69,18 @@ const getDateLabel = (dateInput: string | Date) => {
 };
 
 interface NotificationDropdownProps {
-    role: string;
+    roles: string[];
+    employeeId?: string | null;
     bellSize?: number;
     notificationsPath: string;
 }
 
-export default function NotificationDropdown({ role, bellSize = 20, notificationsPath }: NotificationDropdownProps) {
+export default function NotificationDropdown({ roles, employeeId, bellSize = 20, notificationsPath }: NotificationDropdownProps) {
     const [showDropdown, setShowDropdown] = useState(false);
     const [activeTab, setActiveTab] = useState<'all' | 'unread'>('all');
     const dropdownRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
-    const { notifications, loading, unreadCount, handleMarkRead, handleMarkAllRead } = useNotifications(role);
+    const { notifications, loading, unreadCount, handleMarkRead, handleMarkAllRead } = useNotifications(roles, employeeId);
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
@@ -218,7 +219,7 @@ export default function NotificationDropdown({ role, bellSize = 20, notification
                                         {group.items.map((note: NotificationItem) => {
                                             const { icon: Icon, iconBg, iconColor, dot } = getNotificationStyles(note.type);
                                             const noteId = note.id || note.notification_id || 0;
-                                            const targetPath = getNotificationTargetPath(role, note);
+                                            const targetPath = getNotificationTargetPath(roles, note);
                                             return (
                                                 <div
                                                     key={noteId}

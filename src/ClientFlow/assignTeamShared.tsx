@@ -9,6 +9,7 @@ import {
 } from "react";
 import axios from "axios";
 import { getAssignTeam } from "../api/assignTeam.api";
+import { getCurrentUserDisplayName, getCurrentUserRole } from "../utils/currentUser";
 
 export interface ShootLocation {
   label: string;
@@ -113,6 +114,8 @@ const hasRole = (employee: Employee, expectedRoles: string[]) => {
 
 export const buildAssignTeamPayload = (context: AssignTeamContext) => ({
   external_lead_id: context.actualId,
+  assigned_by_name: getCurrentUserDisplayName(),
+  assigned_by_role: getCurrentUserRole(context.currentPhase === "event" ? "event-coordinator" : "crm"),
   ...context.teamData,
   secondary_photographer: context.secondaryPhotographers,
   secondary_videographer: context.secondaryVideographers,

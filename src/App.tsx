@@ -132,6 +132,7 @@ import MRCandidVideo from './pages/multi-role/pages/employee/CandidVideo'
 import MRCandidVideoWorks from './pages/multi-role/pages/employee/CandidVideoWorks'
 import MRClients from './pages/multi-role/pages/Clients'
 import TimeTracker from './pages/multi-role/pages/TimeTracker'
+import MultiRoleNotifications from './pages/multi-role/pages/Notifications'
 
 function App() {
   return (
@@ -192,7 +193,7 @@ function App() {
             {/* Common pages */}
             <Route path="attendance" element={<MediaAttendance />} />
             <Route path="leave-request" element={<MediaLeaveRequest />} />
-            <Route path="notifications" element={<MediaNotifications />} />
+            <Route path="notifications" element={<MultiRoleNotifications />} />
           </Route>
         </Route>
 
